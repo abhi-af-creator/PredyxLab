@@ -2,99 +2,155 @@ import { useState } from "react";
 import Controls from "./components/Controls";
 import PriceChart from "./components/PriceChart";
 
-const PERIOD_MAP = {
-  "1D": "day",
-  "1W": "week",
-  "1M": "month",
-  "1Y": "year"
-};
-
 function App() {
-  const [data, setData] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [timeframe, setTimeframe] = useState("1Y");
-  const [lastSymbol, setLastSymbol] = useState("RELIANCE.NS");
-
-  const fetchData = async (symbol, _priceType, period) => {
-    try {
-      setLoading(true);
-      setLastSymbol(symbol);
-
-      const res = await fetch(
-        `http://127.0.0.1:8000/historical?symbol=${symbol}&period=${period}`
-      );
-
-      if (!res.ok) {
-        throw new Error("API error");
+  const [rows, setRows] = useState([
+    [
+      {
+        id: crypto.randomUUID(),
+        data: [],
+        priceType: "both"
       }
+    ]
+  ]);
 
+  const fetchData = async (id, symbol, priceType, start, end) => {
+    try {
+      const url = `http://127.0.0.1:8000/historical?symbol=${symbol}&price_type=${priceType}&start_date=${start}&end_date=${end}`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error();
       const json = await res.json();
-      setData(json);
-    } catch (err) {
-      console.error(err);
+
+      setRows(prev =>
+        prev.map(row =>
+          row.map(c =>
+            c.id === id ? { ...c, data: json, priceType } : c
+          )
+        )
+      );
+    } catch {
       alert("Backend not reachable or invalid response");
-    } finally {
-      setLoading(false);
     }
   };
 
+  const addChart = () => {
+    setRows(prev => {
+      const newChart = {
+        id: crypto.randomUUID(),
+        data: [],
+        priceType: "both"
+      };
+
+      const lastRow = prev[prev.length - 1];
+
+      if (lastRow.length === 1) {
+        // fill the row
+        return [
+          ...prev.slice(0, -1),
+          [...lastRow, newChart]
+        ];
+      }
+
+      // start new row
+      return [...prev, [newChart]];
+    });
+  };
+
+  const removeChart = id => {
+    setRows(prev =>
+      prev
+        .map(row => row.filter(c => c.id !== id))
+        .filter(row => row.length > 0)
+    );
+  };
+
   return (
-    <div style={{ padding: 40, background: "#0f172a", minHeight: "100vh" }}>
-      <h2 style={{ color: "#e5e7eb", marginBottom: 20 }}>PredyxLab</h2>
+    <div style={{ padding: 30, background: "#0f172a", minHeight: "100vh" }}>
+      <h2 style={{ color: "#e5e7eb" }}>PredyxLab</h2>
 
-      <div
-        style={{
-          background: "#020617",
-          padding: 20,
-          borderRadius: 12
-        }}
-      >
-        {/* Stock + options */}
-        <Controls
-          onFetch={(symbol, pt) =>
-            fetchData(symbol, pt, PERIOD_MAP[timeframe])
-          }
-        />
+      {rows.map((row, rowIdx) => (
+        <div
+          key={rowIdx}
+          style={{
+            display: "flex",
+            gap: 20,
+            marginBottom: 20
+          }}
+        >
+          {row.map((chart, idx) => {
+            const isLastChart =
+              rowIdx === rows.length - 1 &&
+              idx === row.length - 1;
 
-        {/* Timeframe buttons */}
-        <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
-          {["1D", "1W", "1M", "1Y"].map(tf => (
-            <button
-              key={tf}
-              onClick={() => {
-                setTimeframe(tf);
-                fetchData(lastSymbol, "both", PERIOD_MAP[tf]);
-              }}
-              style={{
-                padding: "6px 14px",
-                borderRadius: 6,
-                border: "1px solid #334155",
-                background: tf === timeframe ? "#2563eb" : "#020617",
-                color: "#e5e7eb",
-                cursor: "pointer"
-              }}
-            >
-              {tf}
-            </button>
-          ))}
+            return (
+              <div
+                key={chart.id}
+                style={{
+                  flex: 1,
+                  background: "#020617",
+                  padding: 16,
+                  borderRadius: 12
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    marginBottom: 10
+                  }}
+                >
+                  <Controls
+                    onFetch={(symbol, pt, start, end) =>
+                      fetchData(chart.id, symbol, pt, start, end)
+                    }
+                  />
+
+                  <div>
+                    {rows.length > 1 && (
+                      <button
+                        onClick={() => removeChart(chart.id)}
+                        style={{
+                          marginRight: 8,
+                          background: "#7f1d1d",
+                          color: "white",
+                          border: "none",
+                          padding: "6px 10px",
+                          borderRadius: 6
+                        }}
+                      >
+                        ✕
+                      </button>
+                    )}
+
+                    {isLastChart && (
+                      <button
+                        onClick={addChart}
+                        style={{
+                          background: "#2563eb",
+                          color: "white",
+                          border: "none",
+                          padding: "6px 12px",
+                          borderRadius: 6
+                        }}
+                      >
+                        +
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {chart.data.length > 0 ? (
+                  <PriceChart
+                    data={chart.data}
+                    priceType={chart.priceType}
+                  />
+                ) : (
+                  <p style={{ color: "#64748b" }}>No data loaded</p>
+                )}
+              </div>
+            );
+          })}
         </div>
-
-        {/* Status */}
-        {loading && (
-          <p style={{ color: "#94a3b8", marginTop: 16 }}>
-            Loading data…
-          </p>
-        )}
-
-        {!loading && data.length > 0 && (
-          <>
-            <p style={{ color: "#94a3b8", marginTop: 16 }}>
-              Records fetched: {data.length}
-            </p>
-            <PriceChart data={data} />
-          </>
-        )}
-      </div>
+      ))}
     </div>
   );
 }

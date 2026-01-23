@@ -1,6 +1,7 @@
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from backend.src.data_fetch import fetch_historical_data
+import pandas as pd
 
 app = FastAPI(
     title="PredyxLab API",
@@ -8,44 +9,119 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# ✅ Correct CORS (NO wildcard + credentials)
+# --------------------
+# CORS CONFIG
+# --------------------
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000"],
-    allow_credentials=False,
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# --------------------
+# HEALTH CHECK
+# --------------------
 @app.get("/")
 def health():
     return {"status": "PredyxLab backend running"}
 
+# --------------------
+# HISTORICAL DATA API
+# --------------------
 @app.get("/historical")
 def get_historical(
     symbol: str,
     price_type: str = Query("both", enum=["open", "close", "both"]),
-    period: str = Query("year", enum=["day", "week", "year"])
+    start_date: str | None = None,
+    end_date: str | None = None,
 ):
-    period_days = {
-        "day": 30,
-        "week": 180,
-        "month": 365,
-        "year": 365
-    }
-
-    days = period_days.get(period, 365)
-    df = fetch_historical_data(symbol, days)
+    # Fetch data (data_fetch.py already does reset_index)
+    df = fetch_historical_data(symbol)
 
     if df is None or df.empty:
         raise HTTPException(status_code=404, detail="No data found")
 
-    base_cols = ["Date"]
-    if price_type == "open":
-        cols = base_cols + ["Open"]
-    elif price_type == "close":
-        cols = base_cols + ["Close"]
+    # --------------------
+    # FLATTEN MULTIINDEX COLUMNS
+    # --------------------
+    if isinstance(df.columns, pd.MultiIndex):
+        df.columns = [
+            "_".join([str(c) for c in col if c]).strip()
+            for col in df.columns
+        ]
     else:
-        cols = base_cols + ["Open", "Close"]
+        df.columns = [str(c) for c in df.columns]
 
-    return df[cols].to_dict(orient="records")
+    # --------------------
+    # IDENTIFY DATE COLUMN
+    # --------------------
+    date_col = None
+    for col in df.columns:
+        if col.lower() in ("date", "datetime", "index"):
+            date_col = col
+            break
+
+    if not date_col:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Date column not found. Columns: {df.columns.tolist()}"
+        )
+
+    # Normalize date column
+    df[date_col] = pd.to_datetime(df[date_col], errors="coerce")
+    df = df.dropna(subset=[date_col])
+
+    # --------------------
+    # APPLY DATE FILTERS
+    # --------------------
+    if start_date:
+        df = df[df[date_col] >= pd.to_datetime(start_date)]
+
+    if end_date:
+        df = df[df[date_col] <= pd.to_datetime(end_date)]
+
+    if df.empty:
+        raise HTTPException(
+            status_code=404,
+            detail="No data found for selected symbol/date range"
+        )
+
+    # --------------------
+    # IDENTIFY OPEN / CLOSE COLUMNS (DYNAMIC)
+    # --------------------
+    open_col = None
+    close_col = None
+
+    for col in df.columns:
+        c = col.lower()
+        if c.startswith("open"):
+            open_col = col
+        elif c.startswith("close"):
+            close_col = col
+
+    if not open_col or not close_col:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Open/Close columns not found. Columns: {df.columns.tolist()}"
+        )
+
+    # --------------------
+    # BUILD JSON RESPONSE
+    # --------------------
+    result = []
+    for _, row in df.iterrows():
+        record = {
+            "date": row[date_col].date().isoformat()
+        }
+
+        if price_type in ("open", "both"):
+            record["open"] = float(row[open_col])
+
+        if price_type in ("close", "both"):
+            record["close"] = float(row[close_col])
+
+        result.append(record)
+
+    return result

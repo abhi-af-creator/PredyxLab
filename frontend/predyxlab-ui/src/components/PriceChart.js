@@ -3,18 +3,20 @@ import Chart from "react-apexcharts";
 function PriceChart({ data }) {
   if (!data || data.length === 0) return null;
 
-  const dates = data.map(d => d.Date);
-  const openPrices = data.map(d => d.Open ?? null);
-  const closePrices = data.map(d => d.Close ?? null);
-
   const series = [
     {
       name: "Open",
-      data: openPrices
+      data: data.map(d => ({
+        x: new Date(d.date),
+        y: d.open
+      }))
     },
     {
       name: "Close",
-      data: closePrices
+      data: data.map(d => ({
+        x: new Date(d.date),
+        y: d.close
+      }))
     }
   ];
 
@@ -23,38 +25,30 @@ function PriceChart({ data }) {
       type: "line",
       height: 350,
       zoom: { enabled: true },
-      toolbar: { show: true },
-      foreColor: "#cbd5f5"
+      toolbar: { show: true }
+    },
+    xaxis: {
+      type: "datetime"
     },
     stroke: {
       curve: "smooth",
       width: 2
     },
-    xaxis: {
-      categories: dates,
-      labels: { rotate: -45 }
+    markers: {
+      size: 0
     },
     tooltip: {
-      theme: "dark"
+      x: {
+        format: "dd MMM yyyy"
+      }
     },
+    colors: ["#22c55e", "#3b82f6"],
     grid: {
       borderColor: "#334155"
-    },
-    legend: {
-      position: "top"
     }
   };
 
-  return (
-    <div style={{ marginTop: 20 }}>
-      <Chart
-        options={options}
-        series={series}
-        type="line"
-        height={350}
-      />
-    </div>
-  );
+  return <Chart options={options} series={series} type="line" height={350} />;
 }
 
 export default PriceChart;

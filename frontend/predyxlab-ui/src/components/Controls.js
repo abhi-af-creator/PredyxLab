@@ -1,31 +1,45 @@
-import React, { useState } from "react";
+import { useState } from "react";
 
 function Controls({ onFetch }) {
   const [symbol, setSymbol] = useState("RELIANCE.NS");
   const [priceType, setPriceType] = useState("both");
-  const [period, setPeriod] = useState("year");
+  const [startDate, setStartDate] = useState("2025-01-01");
+  const [endDate, setEndDate] = useState("2025-03-31");
 
   return (
-    <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
       <input
         value={symbol}
-        onChange={(e) => setSymbol(e.target.value)}
-        placeholder="Stock Symbol"
+        onChange={e => setSymbol(e.target.value)}
+        placeholder="Symbol"
       />
 
-      <select value={priceType} onChange={(e) => setPriceType(e.target.value)}>
+      <select
+        value={priceType}
+        onChange={e => setPriceType(e.target.value)}
+      >
         <option value="both">Both</option>
         <option value="open">Open</option>
         <option value="close">Close</option>
       </select>
 
-      <select value={period} onChange={(e) => setPeriod(e.target.value)}>
-        <option value="day">Daily</option>
-        <option value="week">Weekly</option>
-        <option value="year">Yearly</option>
-      </select>
+      <input
+        type="date"
+        value={startDate}
+        onChange={e => setStartDate(e.target.value)}
+      />
 
-      <button onClick={() => onFetch(symbol, priceType, period)}>
+      <input
+        type="date"
+        value={endDate}
+        onChange={e => setEndDate(e.target.value)}
+      />
+
+      <button
+        onClick={() =>
+          onFetch(symbol, priceType, startDate, endDate)
+        }
+      >
         Fetch
       </button>
     </div>

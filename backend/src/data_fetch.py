@@ -1,22 +1,17 @@
 import yfinance as yf
-from datetime import date, timedelta
 
-def fetch_historical_data(symbol: str, days: int = 365):
-    end_date = date.today()
-    start_date = end_date - timedelta(days=days)
-
-    df = yf.download(symbol, start=start_date, end=end_date, progress=False)
-
-    if df.empty:
+def fetch_historical_data(symbol, days=None):
+    if not symbol:
         return None
 
-    # Flatten multi-index columns (yfinance quirk)
-    if hasattr(df.columns, "levels"):
-        df.columns = df.columns.get_level_values(0)
+    symbol = symbol.strip().upper()  # ✅ CRITICAL FIX
 
-    df.reset_index(inplace=True)
+    if days:
+        df = yf.download(symbol, period=f"{days}d")
+    else:
+        df = yf.download(symbol, period="max")
 
-    df["Date"] = df["Date"].astype(str)
-    df = df.fillna(0)
+    if df is None or df.empty:
+        return None
 
-    return df
+    return df.reset_index()

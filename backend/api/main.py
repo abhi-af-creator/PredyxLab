@@ -100,56 +100,28 @@ def get_historical(
 # -------------------- PREDICT --------------------
 @app.get("/predict")
 def predict(
-    symbol: str = Query(...),
-    horizon: str = Query("7d")
+    symbol: str,
+    horizon: str = "7d"
 ):
     try:
+        from backend.src.models.linear_predictor import predict_linear
+        from backend.src.data_fetch import fetch_historical_data
+
         yf_symbol = normalize_symbol(symbol)
 
-        df = yf.download(
-            yf_symbol,
-            period="1y",
-            interval="1d",
-            auto_adjust=False,
-            progress=False,
-            group_by="column"
-        )
+        # ✅ ALWAYS use the same fetch path
+        df = fetch_historical_data(yf_symbol)
 
         if df is None or df.empty:
-            return {}
+            raise ValueError("No historical data available")
 
-        df = flatten_yfinance_df(df)
+        # ✅ Linear model for 7d
+        if horizon == "7d":
+            return predict_linear(df)
 
-        if df.empty or len(df) < 10:
-            return {}
-
-        closes = df["Close"].values.astype(float)
-
-        # Horizon
-        if horizon.endswith("d"):
-            steps = int(horizon[:-1])
-        elif horizon.endswith("y"):
-            steps = int(horizon[:-1]) * 252
-        else:
-            steps = 7
-
-        returns = np.diff(closes) / closes[:-1]
-        mean_return = returns.mean()
-
-        last_price = closes[-1]
-        preds = []
-
-        price = last_price
-        for _ in range(steps):
-            price *= (1 + mean_return)
-            preds.append(round(float(price), 3))
-
-        return {
-            "horizon": horizon,
-            "last_close": round(float(last_price), 3),
-            "mean_daily_return": round(float(mean_return), 6),
-            "predicted_prices": preds,
-        }
+        # 🔁 Fallback (future-safe)
+        from backend.src.models.baseline_predictor import predict_baseline
+        return predict_baseline(df, horizon)
 
     except Exception as e:
         print("PREDICT ERROR:", repr(e))

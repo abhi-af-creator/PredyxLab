@@ -1,14 +1,19 @@
 import "./PredictionModal.css";
 
 export default function PredictionModal({ data, symbol, onClose }) {
-  if (!data || !Array.isArray(data.predicted_prices)) return null;
+  if (!data) return null;
+
+  // ✅ Support both baseline & ML models
+  const prices =
+    data.predicted_prices || data.path || [];
+
+  if (!Array.isArray(prices) || prices.length === 0) return null;
 
   // Generate future dates (business days)
-  const start = new Date();
   const dates = [];
-  let d = new Date(start);
+  let d = new Date();
 
-  while (dates.length < data.predicted_prices.length) {
+  while (dates.length < prices.length) {
     d.setDate(d.getDate() + 1);
     if (d.getDay() !== 0 && d.getDay() !== 6) {
       dates.push(d.toISOString().slice(0, 10));
@@ -19,13 +24,17 @@ export default function PredictionModal({ data, symbol, onClose }) {
     <div className="prediction-overlay">
       <div className="prediction-modal">
         <div className="prediction-header">
-          <h3>Prediction ({data.horizon}) – {symbol}</h3>
+          <h3>
+            Prediction ({data.horizon}) – {symbol}
+          </h3>
           <button className="close-btn" onClick={onClose}>✕</button>
         </div>
 
         <div className="prediction-body">
+          <p><b>Model:</b> {data.model}</p>
           <p><b>Last Close:</b> {data.last_close}</p>
-          <p><b>Mean Daily Return:</b> {data.mean_daily_return}</p>
+          <p><b>Expected Price:</b> {data.expected_price}</p>
+          <p><b>Expected Return (%):</b> {data.expected_return_pct}</p>
 
           <table>
             <thead>
@@ -35,7 +44,7 @@ export default function PredictionModal({ data, symbol, onClose }) {
               </tr>
             </thead>
             <tbody>
-              {data.predicted_prices.map((p, i) => (
+              {prices.map((p, i) => (
                 <tr key={i}>
                   <td>{dates[i]}</td>
                   <td>{p}</td>

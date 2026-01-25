@@ -1,3 +1,5 @@
+/* ---------------- BASE ---------------- */
+
 body {
   margin: 0;
   font-family: Inter, system-ui, sans-serif;
@@ -8,29 +10,22 @@ body {
   padding: 28px;
 }
 
-.title {
+h2 {
   font-size: 28px;
   margin-bottom: 20px;
 }
 
-/* ---------------- ROW LAYOUT ---------------- */
+/* ---------------- GRID ---------------- */
 
-.chart-row {
+.chart-grid {
   display: grid;
-  gap: 20px;
-  margin-bottom: 28px;
-}
+  grid-template-columns: repeat(3, 1fr);
+  gap: 22px;
+  align-items: stretch;
 
-.chart-row.cols-1 {
-  grid-template-columns: 75% 25%;
-}
-
-.chart-row.cols-2 {
-  grid-template-columns: 30% 30% 40%;
-}
-
-.chart-row.cols-3 {
-  grid-template-columns: 30% 30% 30% 10%;
+  /* 🔥 Smooth reflow */
+  transition: grid-template-columns 0.35s ease,
+              gap 0.35s ease;
 }
 
 /* ---------------- CARD ---------------- */
@@ -38,9 +33,43 @@ body {
 .chart-card {
   background: #ffffff;
   border-radius: 18px;
-  padding: 18px;
+  padding: 16px;
   box-shadow: 0 10px 30px rgba(0,0,0,0.08);
-  overflow: hidden;
+  position: relative;
+
+  /* 🔥 Smooth resize & entry */
+  transition:
+    transform 0.35s ease,
+    box-shadow 0.35s ease,
+    width 0.35s ease;
+}
+
+.chart-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 36px rgba(0,0,0,0.12);
+}
+
+/* ---------------- REMOVE BUTTON ---------------- */
+
+.remove-chart {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  border: none;
+  background: #ef4444;
+  color: white;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 14px;
+
+  transition: background 0.25s ease, transform 0.25s ease;
+}
+
+.remove-chart:hover {
+  background: #dc2626;
+  transform: scale(1.1);
 }
 
 /* ---------------- CONTROLS ---------------- */
@@ -68,17 +97,39 @@ body {
   border-radius: 8px;
   padding: 0 12px;
   font-size: 14px;
+  transition: border 0.2s ease, box-shadow 0.2s ease;
 }
+
+.controls input:focus,
+.controls select:focus {
+  outline: none;
+  border: 1px solid #2563eb;
+  box-shadow: 0 0 0 2px rgba(37,99,235,0.15);
+}
+
+/* ---------------- BUTTONS ---------------- */
 
 .btn {
   border: none;
   font-weight: 600;
+  transition:
+    background 0.25s ease,
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.btn:active {
+  transform: scale(0.97);
 }
 
 .btn.fetch {
   background: #2563eb;
   color: white;
   cursor: pointer;
+}
+
+.btn.fetch:hover {
+  background: #1d4ed8;
 }
 
 .btn.predict {
@@ -93,83 +144,45 @@ body {
   cursor: pointer;
 }
 
+.btn.predict.enabled:hover {
+  background: #1d4ed8;
+}
+
 /* ---------------- STATUS ---------------- */
 
 .status {
   color: #64748b;
   font-size: 14px;
-  margin-top: 8px;
+  margin: 8px 0;
 }
 
-/* ---------------- MORE PANEL ---------------- */
+/* ---------------- MORE CHARTS PANEL ---------------- */
 
 .more-charts {
   border-radius: 18px;
   border: 2px dashed #94a3b8;
   background: linear-gradient(135deg, #f1f5ff, #e0e7ff);
+
   display: flex;
   align-items: center;
   justify-content: center;
+  cursor: pointer;
+
   font-size: 18px;
   font-weight: 600;
   color: #1e3a8a;
-  cursor: pointer;
-  transition: all 0.25s ease;
+
+  /* 🔥 Smooth appearance */
+  transition:
+    transform 0.3s ease,
+    background 0.3s ease,
+    border-color 0.3s ease;
 }
 
 .more-charts:hover {
   border-color: #2563eb;
   background: linear-gradient(135deg, #c7d2fe, #e0e7ff);
-  transform: scale(1.02);
-}
-
-.chart-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 20px;
-}
-
-.chart-card {
-  position: relative;
-  background: white;
-  border-radius: 18px;
-  padding: 16px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.08);
-}
-
-/* REMOVE (X) BUTTON */
-.remove-chart {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  border: none;
-  background: #ef4444;
-  color: white;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  cursor: pointer;
-  font-size: 14px;
-}
-
-/* + MORE CHARTS PANEL */
-.more-charts {
-  background: linear-gradient(135deg, #e5e7eb, #f1f5f9);
-  border-radius: 18px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.more-charts:hover {
-  background: linear-gradient(135deg, #dbeafe, #bfdbfe);
-}
-
-.more-charts div {
-  text-align: center;
-  color: #1e3a8a;
+  transform: scale(1.03);
 }
 
 .more-charts span {
@@ -178,7 +191,75 @@ body {
   margin-bottom: 6px;
 }
 
-.status {
-  color: #6b7280;
-  margin: 8px 0;
+/* ---------------- PREDICTION MODAL ---------------- */
+
+.prediction-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+
+  /* 🔥 Fade-in */
+  animation: fadeIn 0.25s ease;
+}
+
+.prediction-modal {
+  background: #fff;
+  width: 420px;
+  border-radius: 14px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+  padding: 16px;
+
+  /* 🔥 Scale-in */
+  animation: popIn 0.25s ease;
+}
+
+/* ---------------- ANIMATIONS ---------------- */
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes popIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+/* ---------------- MORE CHART POSITIONING ---------------- */
+
+/*
+  When 3 charts exist:
+  push the "More Charts" panel to the next row
+*/
+.chart-grid > .more-charts {
+  grid-column: span 1;
+}
+
+.chart-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+  align-items: stretch;
+}
+
+/* ---------------- MORE CHARTS VISIBILITY FIX ---------------- */
+
+/* Default: panel takes one column */
+.more-charts {
+  min-height: 320px;
+}
+
+/* When 3 charts exist, push panel to next row */
+.chart-grid > .chart-card:nth-of-type(3) ~ .more-charts {
+  grid-column: 1 / -1;
+  min-height: 180px;
 }

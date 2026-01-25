@@ -63,7 +63,7 @@ export default function App() {
 
   /* ---------------- CHART OPS ---------------- */
   const addChart = () => {
-    if (charts.length >= 6) return;
+    /*if (charts.length >= 6) return;*/
     setCharts(cs => [...cs, emptyChart()]);
   };
 
@@ -72,23 +72,29 @@ export default function App() {
     setCharts(cs => cs.filter(c => c.id !== id));
   };
 
+  /* ---------------- LAYOUT CLASS ---------------- */
+  const gridClass =
+    charts.length === 1
+      ? "cols-1"
+      : charts.length === 2
+      ? "cols-2"
+      : "cols-3";
+
   return (
     <div className="app">
       <h2>PredyxLab</h2>
 
-      <div className="chart-grid">
+      <div className={`chart-grid ${gridClass}`}>
         {charts.map(chart => (
           <div key={chart.id} className="chart-card">
-            {/* REMOVE BUTTON */}
-            {charts.length > 1 && (
-              <button
-                className="remove-chart"
-                onClick={() => removeChart(chart.id)}
-                title="Remove chart"
-              >
-                ✕
-              </button>
-            )}
+            {/* REMOVE BUTTON (always present) */}
+            <button
+              className="remove-chart"
+              onClick={() => removeChart(chart.id)}
+              title="Remove chart"
+            >
+              ✕
+            </button>
 
             <Controls
               initial={chart}
@@ -109,15 +115,13 @@ export default function App() {
           </div>
         ))}
 
-        {/* + MORE CHARTS PANEL */}
-        {charts.length < 3 && (
-          <div className="more-charts" onClick={addChart}>
-            <div>
-              <span>＋</span>
-              <p>More Charts</p>
-            </div>
+        {/* MORE CHARTS PANEL — ALWAYS RENDERED */}
+        <div className="more-charts" onClick={addChart}>
+          <div>
+            <span>＋</span>
+            <p>More Charts</p>
           </div>
-        )}
+        </div>
       </div>
 
       {prediction && (

@@ -1,158 +1,132 @@
 import { useState } from "react";
 import Controls from "./components/Controls";
 import PriceChart from "./components/PriceChart";
+import PredictionModal from "./components/PredictionModal";
+import "./App.css";
 
-function App() {
-  const [rows, setRows] = useState([
-    [
-      {
-        id: crypto.randomUUID(),
-        data: [],
-        priceType: "both"
-      }
-    ]
-  ]);
+const emptyChart = () => ({
+  id: crypto.randomUUID(),
+  symbol: "RELIANCE",
+  priceType: "both",
+  startDate: "2025-01-01",
+  endDate: "2025-03-31",
+  data: [],
+  loading: false
+});
 
-  const fetchData = async (id, symbol, priceType, start, end) => {
-    try {
-      const url = `http://127.0.0.1:8000/historical?symbol=${symbol}&price_type=${priceType}&start_date=${start}&end_date=${end}`;
-      const res = await fetch(url);
-      if (!res.ok) throw new Error();
-      const json = await res.json();
+export default function App() {
+  const [charts, setCharts] = useState([emptyChart()]);
+  const [prediction, setPrediction] = useState(null);
+  const [predSymbol, setPredSymbol] = useState(null);
 
-      setRows(prev =>
-        prev.map(row =>
-          row.map(c =>
-            c.id === id ? { ...c, data: json, priceType } : c
-          )
-        )
-      );
-    } catch {
-      alert("Backend not reachable or invalid response");
-    }
-  };
+  /* ---------------- FETCH ---------------- */
+  const fetchData = async (id, params) => {
+    setCharts(cs =>
+      cs.map(c => (c.id === id ? { ...c, loading: true } : c))
+    );
 
-  const addChart = () => {
-    setRows(prev => {
-      const newChart = {
-        id: crypto.randomUUID(),
-        data: [],
-        priceType: "both"
-      };
-
-      const lastRow = prev[prev.length - 1];
-
-      if (lastRow.length === 1) {
-        // fill the row
-        return [
-          ...prev.slice(0, -1),
-          [...lastRow, newChart]
-        ];
-      }
-
-      // start new row
-      return [...prev, [newChart]];
+    const query = new URLSearchParams({
+      symbol: params.symbol,
+      start_date: params.startDate,
+      end_date: params.endDate
     });
-  };
 
-  const removeChart = id => {
-    setRows(prev =>
-      prev
-        .map(row => row.filter(c => c.id !== id))
-        .filter(row => row.length > 0)
+    const res = await fetch(`http://127.0.0.1:8000/historical?${query}`);
+    const json = await res.json();
+
+    setCharts(cs =>
+      cs.map(c =>
+        c.id === id
+          ? {
+              ...c,
+              data: json,
+              priceType: params.priceType,
+              symbol: params.symbol,
+              loading: false
+            }
+          : c
+      )
     );
   };
 
+  /* ---------------- PREDICT ---------------- */
+  const predict = async symbol => {
+    setPrediction(null);
+    setPredSymbol(symbol);
+
+    const res = await fetch(
+      `http://127.0.0.1:8000/predict?symbol=${symbol}&horizon=7d`
+    );
+    const json = await res.json();
+    setPrediction(json);
+  };
+
+  /* ---------------- CHART OPS ---------------- */
+  const addChart = () => {
+    if (charts.length >= 6) return;
+    setCharts(cs => [...cs, emptyChart()]);
+  };
+
+  const removeChart = id => {
+    if (charts.length === 1) return;
+    setCharts(cs => cs.filter(c => c.id !== id));
+  };
+
   return (
-    <div style={{ padding: 30, background: "#0f172a", minHeight: "100vh" }}>
-      <h2 style={{ color: "#e5e7eb" }}>PredyxLab</h2>
+    <div className="app">
+      <h2>PredyxLab</h2>
 
-      {rows.map((row, rowIdx) => (
-        <div
-          key={rowIdx}
-          style={{
-            display: "flex",
-            gap: 20,
-            marginBottom: 20
-          }}
-        >
-          {row.map((chart, idx) => {
-            const isLastChart =
-              rowIdx === rows.length - 1 &&
-              idx === row.length - 1;
-
-            return (
-              <div
-                key={chart.id}
-                style={{
-                  flex: 1,
-                  background: "#020617",
-                  padding: 16,
-                  borderRadius: 12
-                }}
+      <div className="chart-grid">
+        {charts.map(chart => (
+          <div key={chart.id} className="chart-card">
+            {/* REMOVE BUTTON */}
+            {charts.length > 1 && (
+              <button
+                className="remove-chart"
+                onClick={() => removeChart(chart.id)}
+                title="Remove chart"
               >
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    marginBottom: 10
-                  }}
-                >
-                  <Controls
-                    onFetch={(symbol, pt, start, end) =>
-                      fetchData(chart.id, symbol, pt, start, end)
-                    }
-                  />
+                ✕
+              </button>
+            )}
 
-                  <div>
-                    {rows.length > 1 && (
-                      <button
-                        onClick={() => removeChart(chart.id)}
-                        style={{
-                          marginRight: 8,
-                          background: "#7f1d1d",
-                          color: "white",
-                          border: "none",
-                          padding: "6px 10px",
-                          borderRadius: 6
-                        }}
-                      >
-                        ✕
-                      </button>
-                    )}
+            <Controls
+              initial={chart}
+              onFetch={params => fetchData(chart.id, params)}
+              onPredict={() => predict(chart.symbol)}
+              canPredict={chart.data.length > 0}
+            />
 
-                    {isLastChart && (
-                      <button
-                        onClick={addChart}
-                        style={{
-                          background: "#2563eb",
-                          color: "white",
-                          border: "none",
-                          padding: "6px 12px",
-                          borderRadius: 6
-                        }}
-                      >
-                        +
-                      </button>
-                    )}
-                  </div>
-                </div>
+            {chart.loading && <p className="status">Loading…</p>}
+            {!chart.loading && chart.data.length === 0 && (
+              <p className="status">No data loaded</p>
+            )}
 
-                {chart.data.length > 0 ? (
-                  <PriceChart
-                    data={chart.data}
-                    priceType={chart.priceType}
-                  />
-                ) : (
-                  <p style={{ color: "#64748b" }}>No data loaded</p>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      ))}
+            <PriceChart
+              data={chart.data}
+              priceType={chart.priceType}
+            />
+          </div>
+        ))}
+
+        {/* + MORE CHARTS PANEL */}
+        {charts.length < 3 && (
+          <div className="more-charts" onClick={addChart}>
+            <div>
+              <span>＋</span>
+              <p>More Charts</p>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {prediction && (
+        <PredictionModal
+          data={prediction}
+          symbol={predSymbol}
+          onClose={() => setPrediction(null)}
+        />
+      )}
     </div>
   );
 }
-
-export default App;

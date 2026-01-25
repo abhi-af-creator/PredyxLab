@@ -1,54 +1,54 @@
-import Chart from "react-apexcharts";
+import Plot from "react-plotly.js";
 
-function PriceChart({ data }) {
-  if (!data || data.length === 0) return null;
+export default function PriceChart({ data, priceType }) {
+  if (!Array.isArray(data) || data.length === 0) return null;
 
-  const series = [
-    {
+  const dates = data.map(d => d.date);
+  const traces = [];
+
+  if (priceType === "open" || priceType === "both") {
+    traces.push({
+      x: dates,
+      y: data.map(d => d.open),
       name: "Open",
-      data: data.map(d => ({
-        x: new Date(d.date),
-        y: d.open
-      }))
-    },
-    {
+      mode: "lines",
+      line: { color: "#2563eb", width: 2 }
+    });
+  }
+
+  if (priceType === "close" || priceType === "both") {
+    traces.push({
+      x: dates,
+      y: data.map(d => d.close),
       name: "Close",
-      data: data.map(d => ({
-        x: new Date(d.date),
-        y: d.close
-      }))
-    }
-  ];
+      mode: "lines",
+      line: { color: "#dc2626", width: 2 }
+    });
+  }
 
-  const options = {
-    chart: {
-      type: "line",
-      height: 350,
-      zoom: { enabled: true },
-      toolbar: { show: true }
-    },
-    xaxis: {
-      type: "datetime"
-    },
-    stroke: {
-      curve: "smooth",
-      width: 2
-    },
-    markers: {
-      size: 0
-    },
-    tooltip: {
-      x: {
-        format: "dd MMM yyyy"
-      }
-    },
-    colors: ["#22c55e", "#3b82f6"],
-    grid: {
-      borderColor: "#334155"
-    }
-  };
-
-  return <Chart options={options} series={series} type="line" height={350} />;
+  return (
+    <Plot
+      data={traces}
+      layout={{
+        autosize: true,
+        margin: { l: 60, r: 20, t: 10, b: 70 },
+        xaxis: {
+          title: { text: "Date", font: { size: 14, style: "italic" } },
+          tickangle: -30
+        },
+        yaxis: {
+          title: { text: "Price", font: { size: 14, style: "italic" } }
+        },
+        legend: {
+          orientation: "h",
+          y: -0.35,
+          x: 0.5,
+          xanchor: "center"
+        }
+      }}
+      config={{ displayModeBar: false, responsive: true }}
+      useResizeHandler
+      style={{ width: "100%", height: 320 }}
+    />
+  );
 }
-
-export default PriceChart;

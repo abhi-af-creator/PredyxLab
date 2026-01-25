@@ -1,0 +1,43 @@
+.prediction-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+}
+
+.prediction-modal {
+  background: #fff;
+  width: 420px;
+  border-radius: 14px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+  padding: 16px;
+}
+
+.prediction-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.close-btn {
+  border: none;
+  background: none;
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.prediction-body table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+}
+
+.prediction-body th,
+.prediction-body td {
+  border-bottom: 1px solid #e5e7eb;
+  padding: 6px;
+  text-align: left;
+}

@@ -99,29 +99,19 @@ def get_historical(
 
 # -------------------- PREDICT --------------------
 @app.get("/predict")
-def predict(
-    symbol: str,
-    horizon: str = "7d"
-):
+def predict(symbol: str, horizon: str = "7d"):
     try:
-        from backend.src.models.linear_predictor import predict_linear
         from backend.src.data_fetch import fetch_historical_data
+        from backend.src.arbitration.model_selector import select_best_model
 
         yf_symbol = normalize_symbol(symbol)
-
-        # ✅ ALWAYS use the same fetch path
         df = fetch_historical_data(yf_symbol)
 
         if df is None or df.empty:
-            raise ValueError("No historical data available")
+            raise ValueError("No historical data")
 
-        # ✅ Linear model for 7d
-        if horizon == "7d":
-            return predict_linear(df)
-
-        # 🔁 Fallback (future-safe)
-        from backend.src.models.baseline_predictor import predict_baseline
-        return predict_baseline(df, horizon)
+        result = select_best_model(df)
+        return result
 
     except Exception as e:
         print("PREDICT ERROR:", repr(e))

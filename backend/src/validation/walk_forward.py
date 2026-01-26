@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 from sklearn.linear_model import LinearRegression
 
-from backend.src.features.feature_builder import build_features
+from src.features.feature_builder import build_features
 
 FEATURE_COLS = [
     "ret_1",

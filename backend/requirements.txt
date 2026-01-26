@@ -1,6 +1,10 @@
 fastapi
 uvicorn
-yfinance
 pandas
-scikit-learn
 numpy
+scikit-learn
+yfinance
+python-dateutil
+
+
+

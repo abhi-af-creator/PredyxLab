@@ -1,0 +1,22 @@
+export const NSE_SYMBOLS = [
+  "RELIANCE",
+  "TCS",
+  "INFY",
+  "HDFCBANK",
+  "ICICIBANK",
+  "SBIN",
+  "AXISBANK",
+  "KOTAKBANK",
+  "LT",
+  "ITC",
+  "HINDUNILVR",
+  "BHARTIARTL",
+  "ASIANPAINT",
+  "MARUTI",
+  "TITAN",
+  "SUNPHARMA",
+  "ONGC",
+  "POWERGRID",
+  "NTPC",
+  "ULTRACEMCO"
+];

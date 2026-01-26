@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { NSE_SYMBOLS } from "../constants/symbols";
 
 export default function Controls({
   initial,
@@ -13,12 +14,20 @@ export default function Controls({
 
   return (
     <div className="controls">
+      {/* SYMBOL + PRICE TYPE */}
       <div className="row">
         <input
+          list="symbol-list"
           value={symbol}
-          onChange={e => setSymbol(e.target.value)}
-          placeholder="Symbol"
+          onChange={e => setSymbol(e.target.value.toUpperCase())}
+          placeholder="Select or type NSE symbol (e.g. RELIANCE)"
         />
+
+        <datalist id="symbol-list">
+          {NSE_SYMBOLS.map(sym => (
+            <option key={sym} value={sym} />
+          ))}
+        </datalist>
 
         <select
           value={priceType}
@@ -30,6 +39,7 @@ export default function Controls({
         </select>
       </div>
 
+      {/* DATE RANGE */}
       <div className="row">
         <input
           type="date"
@@ -43,6 +53,7 @@ export default function Controls({
         />
       </div>
 
+      {/* ACTIONS */}
       <div className="row actions">
         <button
           className="btn fetch"

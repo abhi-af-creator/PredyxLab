@@ -99,7 +99,7 @@ def get_historical(
 
 # -------------------- PREDICT --------------------
 @app.get("/predict")
-def predict(symbol: str, horizon: str = "7d"):
+def predict(symbol: str, start_date: str, end_date: str, horizon: str = "7d"):
     try:
         from src.data_fetch import fetch_historical_data
         from src.arbitration.model_selector import select_best_model

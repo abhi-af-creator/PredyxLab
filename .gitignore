@@ -11,6 +11,10 @@ node_modules/
 .DS_Store
 Thumbs.db
 
-# Models / data
+# Docker
+*.log
+docker-compose.override.yml
+
+# Models / data artifacts
 models/
 data/

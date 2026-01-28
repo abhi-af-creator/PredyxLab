@@ -116,3 +116,9 @@ def predict(symbol: str,  horizon: str = "7d"):
     except Exception as e:
         print("PREDICT ERROR:", repr(e))
         return {}
+@app.get("/health")
+def health():
+    return {
+        "status": "ok",
+        "service": "predyxlab-api"
+    }

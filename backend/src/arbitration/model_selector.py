@@ -3,9 +3,9 @@ def select_best_model(df, horizon: str = "7d"):
     Selects best model based on expected_return_pct.
     """
 
-    from backend.src.models.linear_predictor import predict_linear
-    from backend.src.models.baseline_predictor import predict_baseline
-    from backend.src.models.momentum_predictor import predict_momentum
+    from src.models.linear_predictor import predict_linear
+    from src.models.baseline_predictor import predict_baseline
+    from src.models.momentum_predictor import predict_momentum
 
     candidates = {}
 

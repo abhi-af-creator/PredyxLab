@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
-from backend.src.features.feature_builder import build_features
-from backend.src.models.linear_predictor import FEATURE_COLS
+from src.features.feature_builder import build_features
+from src.models.linear_predictor import FEATURE_COLS
 from linear_model import LinearRegression
 
 def walk_forward_direction_accuracy(df: pd.DataFrame) -> float:

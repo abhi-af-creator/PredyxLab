@@ -1,4 +1,4 @@
-def select_best_model(df):
+def select_best_model(df, horizon: str = "7d"):
     """
     Selects best model based on expected_return_pct.
     """
@@ -10,9 +10,9 @@ def select_best_model(df):
     candidates = {}
 
     model_fns = {
-        "linear": lambda d: predict_linear(d),
-        "baseline": lambda d: predict_baseline(d, horizon="7d"),
-        "momentum": lambda d: predict_momentum(d, horizon="7d")
+        "linear": lambda d: predict_linear(d, horizon=horizon),
+        "baseline": lambda d: predict_baseline(d, horizon=horizon),
+        "momentum": lambda d: predict_momentum(d, horizon=horizon)
     }
 
     for name, fn in model_fns.items():

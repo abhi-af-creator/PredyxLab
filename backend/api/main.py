@@ -94,8 +94,8 @@ def get_historical(
 @app.get("/predict")
 def predict(symbol: str, horizon: str = "7d"):
     try:
-        from src.data_fetch import fetch_historical_data
-        from src.arbitration.model_selector import select_best_model
+        from backend.src.data_fetch import fetch_historical_data
+        from backend.src.arbitration.model_selector import select_best_model
 
         yf_symbol = normalize_symbol(symbol)
 

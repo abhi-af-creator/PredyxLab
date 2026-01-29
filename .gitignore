@@ -16,5 +16,5 @@ Thumbs.db
 docker-compose.override.yml
 
 # Models / data artifacts
-models/
+# models/
 data/

@@ -1,0 +1,2 @@
+from linear_predictor import predict_linear
+print(predict_linear)

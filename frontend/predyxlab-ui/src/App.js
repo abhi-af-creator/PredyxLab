@@ -4,12 +4,17 @@ import PriceChart from "./components/PriceChart";
 import PredictionModal from "./components/PredictionModal";
 import "./App.css";
 
+/* ---------------- API BASE ---------------- */
+const API_BASE =
+  process.env.REACT_APP_API_BASE || "http://127.0.0.1:8000";
+
+/* ---------------- EMPTY CHART ---------------- */
 const emptyChart = () => ({
-  id: crypto.randomUUID(),
+  id: crypto.randomUUID?.() || Date.now().toString(),
   symbol: "RELIANCE",
   priceType: "both",
-  startDate: "2025-01-01",
-  endDate: "2025-03-31",
+  startDate: "2026-01-01",
+  endDate: "2026-01-31",
   data: [],
   loading: false
 });
@@ -19,7 +24,7 @@ export default function App() {
   const [prediction, setPrediction] = useState(null);
   const [predSymbol, setPredSymbol] = useState(null);
 
-  /* ---------------- FETCH ---------------- */
+  /* ---------------- FETCH HISTORICAL ---------------- */
   const fetchData = async (id, params) => {
     setCharts(cs =>
       cs.map(c => (c.id === id ? { ...c, loading: true } : c))
@@ -30,11 +35,9 @@ export default function App() {
         symbol: params.symbol,
         start_date: params.startDate,
         end_date: params.endDate
-      });
+      }).toString();
 
-      const res = await fetch(
-        `http://127.0.0.1:8000/historical?${query}`
-      );
+      const res = await fetch(`${API_BASE}/historical?${query}`);
       const json = await res.json();
 
       setCharts(cs =>
@@ -62,35 +65,33 @@ export default function App() {
 
   /* ---------------- PREDICT ---------------- */
   const predict = async symbol => {
-  setPrediction(null);
-  setPredSymbol(symbol);
+    setPrediction(null);
+    setPredSymbol(symbol);
 
-  try {
-    const res = await fetch(
-      `http://127.0.0.1:8000/predict?symbol=${symbol}&horizon=7d`
-    );
-    const json = await res.json();
+    try {
+      const res = await fetch(
+        `${API_BASE}/predict?symbol=${symbol}&horizon=7d`
+      );
 
-    // 🔥 UNWRAP arbitration if present
-    const payload = json.prediction || json;
+      const json = await res.json();
 
-    const prices =
-      payload?.predicted_prices || payload?.path;
+      // unwrap arbitration payload
+      const payload = json.prediction || json;
+      const prices = payload?.path;
 
-    if (!Array.isArray(prices) || prices.length === 0) {
-      console.error("Invalid prediction payload:", json);
-      alert("Prediction failed. No usable data returned.");
-      return;
+      if (!Array.isArray(prices) || prices.length === 0) {
+        console.error("Invalid prediction payload:", json);
+        alert("Prediction failed. No usable data returned.");
+        return;
+      }
+
+      setPrediction(payload);
+
+    } catch (err) {
+      console.error("Prediction request failed:", err);
+      alert("Prediction request failed");
     }
-
-    setPrediction(payload);
-
-  } catch (err) {
-    console.error("Prediction request failed:", err);
-    alert("Prediction request failed");
-  }
-};
-
+  };
 
   /* ---------------- CHART OPS ---------------- */
   const addChart = () => {
@@ -103,6 +104,7 @@ export default function App() {
     setCharts(cs => cs.filter(c => c.id !== id));
   };
 
+  /* ---------------- RENDER ---------------- */
   return (
     <div className="app">
       <h2>PredyxLab</h2>
@@ -110,7 +112,7 @@ export default function App() {
       <div className="chart-grid">
         {charts.map(chart => (
           <div key={chart.id} className="chart-card">
-            {/* REMOVE BUTTON */}
+            {/* Remove chart */}
             <button
               className="remove-chart"
               onClick={() => removeChart(chart.id)}
@@ -138,7 +140,7 @@ export default function App() {
           </div>
         ))}
 
-        {/* + MORE CHARTS PANEL */}
+        {/* Add more charts */}
         {charts.length < 6 && (
           <div className="more-charts" onClick={addChart}>
             <div>

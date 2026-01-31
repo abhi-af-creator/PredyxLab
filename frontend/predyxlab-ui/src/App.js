@@ -7,6 +7,7 @@ import "./App.css";
 /* ---------------- API BASE ---------------- */
 const API_BASE =
   process.env.REACT_APP_API_BASE ;
+console.log("BUILD OK: REACT_APP_API_BASE =", API_BASE);
 if (!API_BASE) {
   console.error("❌ REACT_APP_API_BASE is undefined at build time");
 }

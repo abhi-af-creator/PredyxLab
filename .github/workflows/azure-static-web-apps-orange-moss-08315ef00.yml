@@ -12,7 +12,8 @@ on:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-
+    env:                                # 🔥 THIS IS CRITICAL
+      REACT_APP_API_BASE: https://predyxlab-api.blackglacier-cde78dbb.centralindia.azurecontainerapps.io
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4

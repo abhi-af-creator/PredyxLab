@@ -1,10 +1,14 @@
 from fastapi import FastAPI, Query, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-import yfinance as yf
 import pandas as pd
-import numpy as np
+import logging
 
-app = FastAPI()
+# -------------------- APP --------------------
+app = FastAPI(title="PredyxLab API", version="1.0")
+
+# -------------------- LOGGING --------------------
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("predyxlab")
 
 # -------------------- CORS --------------------
 app.add_middleware(
@@ -14,6 +18,21 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# -------------------- STARTUP VALIDATION --------------------
+
+@app.on_event("startup")
+def validate_startup():
+    try:
+        from backend.src.models import linear_predictor
+        from backend.src.models import baseline_predictor
+        from backend.src.models import momentum_predictor
+        from backend.src.arbitration import model_selector
+        logger.info("STARTUP CHECK PASSED: All core modules loaded")
+    except Exception:
+        logger.exception("STARTUP CHECK FAILED")
+        raise RuntimeError("Critical modules missing at startup")
+
 
 # -------------------- HELPERS --------------------
 def normalize_symbol(symbol: str) -> str:
@@ -32,10 +51,7 @@ def flatten_yfinance_df(df: pd.DataFrame) -> pd.DataFrame:
     df = df.reset_index()
 
     if isinstance(df.columns, pd.MultiIndex):
-        df.columns = [
-            col[0] if isinstance(col, tuple) else col
-            for col in df.columns
-        ]
+        df.columns = [col[0] if isinstance(col, tuple) else col for col in df.columns]
 
     required = ["Date", "Open", "Close"]
     df = df[[c for c in required if c in df.columns]]
@@ -44,19 +60,20 @@ def flatten_yfinance_df(df: pd.DataFrame) -> pd.DataFrame:
     df["Open"] = pd.to_numeric(df["Open"], errors="coerce")
     df["Close"] = pd.to_numeric(df["Close"], errors="coerce")
 
-    df = df.dropna(subset=["Date", "Open", "Close"])
-    return df
-
+    return df.dropna(subset=["Date", "Open", "Close"])
 
 # -------------------- HISTORICAL --------------------
 @app.get("/historical")
 def get_historical(
     symbol: str = Query(...),
     start_date: str = Query(...),
-    end_date: str = Query(...)
+    end_date: str = Query(...),
 ):
     try:
+        import yfinance as yf
+
         yf_symbol = normalize_symbol(symbol)
+        logger.info(f"Fetching historical data: {yf_symbol}")
 
         df = yf.download(
             yf_symbol,
@@ -65,16 +82,13 @@ def get_historical(
             interval="1d",
             auto_adjust=False,
             progress=False,
-            group_by="column"
+            group_by="column",
         )
 
         if df is None or df.empty:
             return []
 
         df = flatten_yfinance_df(df)
-
-        if df.empty:
-            return []
 
         return [
             {
@@ -86,9 +100,11 @@ def get_historical(
         ]
 
     except Exception as e:
-        print("HISTORICAL ERROR:", repr(e))
-        return []
-
+        logger.exception("HISTORICAL ERROR")
+        return {
+            "error": "historical_failed",
+            "reason": str(e),
+        }
 
 # -------------------- PREDICT --------------------
 @app.get("/predict")
@@ -98,42 +114,49 @@ def predict(symbol: str, horizon: str = "7d"):
         from backend.src.arbitration.model_selector import select_best_model
 
         yf_symbol = normalize_symbol(symbol)
-
-        df = fetch_historical_data(yf_symbol)
-        if df is None or df.empty:
-            raise ValueError("No historical data")
-
-        # 🔽 ADDED: log inputs to confirm Azure parity
-        print("PREDICT INPUTS:", symbol, horizon)
-
-        # 🔽 ADDED: normalize horizon defensively
         horizon = horizon.lower().strip()
 
         if not horizon.endswith("d"):
             raise HTTPException(
                 status_code=400,
-                detail="Invalid horizon format. Use '7d', '14d', etc."
+                detail="Invalid horizon format. Use '7d', '14d', etc.",
+            )
+        if horizon not in {"7d", "14d", "30d"}:
+            raise HTTPException(
+                status_code=400,
+                detail="Supported horizons: 7d, 14d, 30d"
             )
 
-        # 🔽 CHANGED: horizon passed explicitly to selector
+        logger.info(
+            "Prediction request",
+            extra={"symbol": yf_symbol, "horizon": horizon},
+        )
+
+        df = fetch_historical_data(yf_symbol)
+
+        if df is None or df.empty:
+            raise ValueError("No historical data available")
+
         result = select_best_model(df, horizon=horizon)
 
-        # 🔽 ADDED: never return silent {}
         if not result or "prediction" not in result:
             return {
                 "selected_model": "none",
                 "prediction": {},
-                "reason": "No model produced a valid prediction"
+                "reason": "No model produced a valid prediction",
             }
 
         return result
 
     except Exception as e:
-        print("PREDICT ERROR:", repr(e))
+        logger.exception(
+            "Prediction failed",
+            extra={"symbol": symbol, "horizon": horizon}
+        )
         return {
             "selected_model": "error",
             "prediction": {},
-            "reason": str(e)
+            "reason": str(e),
         }
 
 
@@ -142,5 +165,34 @@ def predict(symbol: str, horizon: str = "7d"):
 def health():
     return {
         "status": "ok",
-        "service": "predyxlab-api"
+        "service": "predyxlab-api",
     }
+
+@app.get("/ready")
+def readiness():
+    try:
+        from backend.src.models.linear_predictor import predict_linear
+        return {"ready": True}
+    except Exception:
+        return {"ready": False}
+@app.get("/meta")
+def meta():
+    return {
+        "service": "PredyxLab",
+        "version": "2.0",
+        "models": [
+            "baseline_mean_return",
+            "linear_regression",
+            "momentum_trend"
+        ],
+        "default_horizon": "7d",
+        "data_source": "Yahoo Finance",
+        "deployment": "Azure Container Apps",
+    }
+@app.get("/smoke")
+def smoke():
+    try:
+        from backend.src.models.linear_predictor import predict_linear
+        return {"status": "ok", "model": "linear_regression"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

@@ -7,7 +7,9 @@ import "./App.css";
 /* ---------------- API BASE ---------------- */
 const API_BASE =
   process.env.REACT_APP_API_BASE ;
-
+if (!API_BASE) {
+  console.error("❌ REACT_APP_API_BASE is undefined at build time");
+}
 /* ---------------- EMPTY CHART ---------------- */
 const emptyChart = () => ({
   id: crypto.randomUUID?.() || Date.now().toString(),
@@ -162,3 +164,4 @@ export default function App() {
     </div>
   );
 }
+// force rebuild 02/01/2026 01:15:37

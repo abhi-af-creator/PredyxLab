@@ -7,6 +7,7 @@ on:
     paths:
       - "frontend/**"
       - ".github/workflows/azure-static-web-apps-orange-moss-08315ef00.yml"
+  workflow_dispatch:
 
 jobs:
   build-and-deploy:
@@ -23,7 +24,7 @@ jobs:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           action: upload
 
-          # 👇 THIS MATCHES YOUR ACTUAL STRUCTURE
+          # 👇 THIS MATCHES YOUR ACTUAL new STRUCTURE
           app_location: "frontend/predyxlab-ui"
           output_location: "build"
 

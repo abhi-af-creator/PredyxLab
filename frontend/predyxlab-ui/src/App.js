@@ -11,16 +11,27 @@ console.log("BUILD OK: REACT_APP_API_BASE =", API_BASE);
 if (!API_BASE) {
   console.error("❌ REACT_APP_API_BASE is undefined at build time");
 }
+
+const todayISO = () =>
+  new Date().toISOString().split("T")[0];
+
+const MIN_DATE = "2011-01-01";
+
 /* ---------------- EMPTY CHART ---------------- */
-const emptyChart = () => ({
-  id: crypto.randomUUID?.() || Date.now().toString(),
-  symbol: "RELIANCE",
-  priceType: "both",
-  startDate: "2026-01-01",
-  endDate: "2026-01-31",
-  data: [],
-  loading: false
-});
+const emptyChart = () => {
+  const today = todayISO();
+
+  return {
+    id: crypto.randomUUID?.() || Date.now().toString(),
+    symbol: "RELIANCE",
+    priceType: "both",
+    startDate: MIN_DATE,
+    endDate: today,
+    data: [],
+    loading: false
+  };
+};
+
 
 export default function App() {
   const [charts, setCharts] = useState([emptyChart()]);

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { NSE_SYMBOLS } from "../constants/symbols";
-
+const todayISO = () =>
+  new Date().toISOString().split("T")[0];
 export default function Controls({
   initial,
   onFetch,
@@ -44,11 +45,15 @@ export default function Controls({
         <input
           type="date"
           value={startDate}
+          min="2011-01-01"
+          max={endDate}
           onChange={e => setStartDate(e.target.value)}
         />
         <input
           type="date"
           value={endDate}
+          min={startDate}
+          max={todayISO()}
           onChange={e => setEndDate(e.target.value)}
         />
       </div>
@@ -57,9 +62,13 @@ export default function Controls({
       <div className="row actions">
         <button
           className="btn fetch"
-          onClick={() =>
-            onFetch({ symbol, startDate, endDate, priceType })
-          }
+          onClick={() => {
+            if (startDate > endDate) {
+              alert("Start date cannot be after end date");
+              return;
+            }
+            onFetch({ symbol, startDate, endDate, priceType });
+          }}
         >
           Fetch
         </button>

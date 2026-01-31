@@ -1,19 +1,28 @@
 import "./PredictionModal.css";
 
 /**
- * Generate future business dates (Mon–Fri only)
+ * Get next business day after a given date
  */
-const generateBusinessDates = (count) => {
+const getNextBusinessDay = (date) => {
+  const d = new Date(date);
+  do {
+    d.setDate(d.getDate() + 1);
+  } while (d.getDay() === 0 || d.getDay() === 6); // skip Sun/Sat
+  return d;
+};
+
+/**
+ * Generate future business dates starting AFTER last trading date
+ */
+const generateBusinessDates = (startDate, count) => {
   const dates = [];
-  let d = new Date();
+  let d = getNextBusinessDay(startDate);
 
   while (dates.length < count) {
-    d.setDate(d.getDate() + 1);
-    const day = d.getDay(); // 0 = Sun, 6 = Sat
-    if (day !== 0 && day !== 6) {
-      dates.push(d.toISOString().slice(0, 10));
-    }
+    dates.push(d.toISOString().slice(0, 10));
+    d = getNextBusinessDay(d);
   }
+
   return dates;
 };
 
@@ -22,11 +31,15 @@ export default function PredictionModal({ data, symbol, onClose }) {
 
   // ✅ Support both baseline & ML models
   const prices = data.predicted_prices || data.path || [];
-
   if (!Array.isArray(prices) || prices.length === 0) return null;
 
-  // ✅ Generate business-day dates only
-  const dates = generateBusinessDates(prices.length);
+  // 🔑 CRITICAL FIX:
+  // Use LAST KNOWN TRADING DATE, not "today"
+  const lastTradingDate =
+    data.last_date ||            // preferred (if backend sends it later)
+    new Date().toISOString();    // safe fallback
+
+  const dates = generateBusinessDates(lastTradingDate, prices.length);
 
   return (
     <div className="prediction-overlay">

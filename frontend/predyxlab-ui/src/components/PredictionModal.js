@@ -1,24 +1,32 @@
 import "./PredictionModal.css";
 
+/**
+ * Generate future business dates (Mon–Fri only)
+ */
+const generateBusinessDates = (count) => {
+  const dates = [];
+  let d = new Date();
+
+  while (dates.length < count) {
+    d.setDate(d.getDate() + 1);
+    const day = d.getDay(); // 0 = Sun, 6 = Sat
+    if (day !== 0 && day !== 6) {
+      dates.push(d.toISOString().slice(0, 10));
+    }
+  }
+  return dates;
+};
+
 export default function PredictionModal({ data, symbol, onClose }) {
   if (!data) return null;
 
   // ✅ Support both baseline & ML models
-  const prices =
-    data.predicted_prices || data.path || [];
+  const prices = data.predicted_prices || data.path || [];
 
   if (!Array.isArray(prices) || prices.length === 0) return null;
 
-  // Generate future dates (business days)
-  const dates = [];
-  let d = new Date();
-
-  while (dates.length < prices.length) {
-    d.setDate(d.getDate() + 1);
-    if (d.getDay() !== 0 && d.getDay() !== 6) {
-      dates.push(d.toISOString().slice(0, 10));
-    }
-  }
+  // ✅ Generate business-day dates only
+  const dates = generateBusinessDates(prices.length);
 
   return (
     <div className="prediction-overlay">

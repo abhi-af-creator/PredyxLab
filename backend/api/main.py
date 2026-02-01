@@ -1,3 +1,4 @@
+from unittest import result
 from fastapi import FastAPI, Query, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import pandas as pd
@@ -138,6 +139,9 @@ def predict(symbol: str, horizon: str = "7d"):
             raise ValueError("No historical data available")
 
         result = select_best_model(df, horizon=horizon)
+        last_date = df["Date"].iloc[-1].strftime("%Y-%m-%d")
+
+        result["last_date"] = last_date
 
         if not result or "prediction" not in result:
             return {

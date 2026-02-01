@@ -1,8 +1,14 @@
 from unittest import result
-from fastapi import FastAPI, Query, HTTPException
+from fastapi import FastAPI, Query, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 import pandas as pd
 import logging
+from pydantic import BaseModel, EmailStr
+import os
+import uuid
+from datetime import datetime
+from azure.data.tables import TableServiceClient
+
 
 # -------------------- APP --------------------
 app = FastAPI(title="PredyxLab API", version="1.0")
@@ -62,6 +68,12 @@ def flatten_yfinance_df(df: pd.DataFrame) -> pd.DataFrame:
     df["Close"] = pd.to_numeric(df["Close"], errors="coerce")
 
     return df.dropna(subset=["Date", "Open", "Close"])
+
+# -------------------- VISITOR LOGGING MODELS --------------------
+
+class VisitorPayload(BaseModel):
+    name: str
+    email: EmailStr
 
 # -------------------- HISTORICAL --------------------
 @app.get("/historical")
@@ -164,6 +176,39 @@ def predict(symbol: str, horizon: str = "7d"):
             "prediction": {},
             "reason": str(e),
         }
+
+
+# -------------------- VISITOR LOGGING --------------------
+
+@app.post("/visitor-log")
+async def visitor_log(payload: VisitorPayload, request: Request):
+    try:
+        conn_str = os.getenv("storage-connection-string")
+        if not conn_str:
+            logger.warning("Storage connection string not configured")
+            return {"status": "skipped"}
+
+        service = TableServiceClient.from_connection_string(conn_str)
+        table = service.get_table_client("VisitorLogs")
+
+        entity = {
+            "PartitionKey": "gateway",
+            "RowKey": str(uuid.uuid4()),
+            "name": payload.name,
+            "email": payload.email,
+            "visited_at": datetime.utcnow().isoformat(),
+            "user_agent": request.headers.get("user-agent", ""),
+        }
+
+        table.create_entity(entity)
+
+        return {"status": "logged"}
+
+    except Exception as e:
+        # FAIL SILENTLY — do NOT break user flow
+        logger.warning(f"Visitor logging failed: {e}")
+        return {"status": "skipped"}
+
 
 
 # -------------------- HEALTH --------------------

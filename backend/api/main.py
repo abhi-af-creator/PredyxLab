@@ -141,7 +141,8 @@ def predict(symbol: str, horizon: str = "7d"):
         result = select_best_model(df, horizon=horizon)
         last_date = df["Date"].iloc[-1].strftime("%Y-%m-%d")
 
-        result["last_date"] = last_date
+        if "prediction" in result:
+            result["prediction"]["last_date"] = last_date
 
         if not result or "prediction" not in result:
             return {
@@ -149,6 +150,7 @@ def predict(symbol: str, horizon: str = "7d"):
                 "prediction": {},
                 "reason": "No model produced a valid prediction",
             }
+
 
         return result
 

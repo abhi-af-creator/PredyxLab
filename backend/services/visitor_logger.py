@@ -1,25 +1,30 @@
-import uuid
-from datetime import datetime
-from azure.data.tables import TableServiceClient
-import os
+@app.post("/visitor-log")
+async def visitor_log(payload: VisitorPayload, request: Request):
+    try:
+        conn_str = os.getenv("storage-connection-string")
+        if not conn_str:
+            logger.warning("Storage connection string not configured")
+            return {"status": "skipped"}
 
-TABLE_NAME = "VisitorLogs"
+        # 🔥 Lazy import (critical fix)
+        from azure.data.tables import TableServiceClient
 
-def log_visitor(name: str, email: str, user_agent: str):
-    conn_str = os.getenv("storage-connection-string")
-    if not conn_str:
-        raise RuntimeError("Storage connection string not configured")
+        service = TableServiceClient.from_connection_string(conn_str)
+        table = service.get_table_client("VisitorLogs")
 
-    service = TableServiceClient.from_connection_string(conn_str)
-    table = service.get_table_client(TABLE_NAME)
+        entity = {
+            "PartitionKey": "gateway",
+            "RowKey": str(uuid.uuid4()),
+            "name": payload.name,
+            "email": payload.email,
+            "visited_at": datetime.utcnow().isoformat(),
+            "user_agent": request.headers.get("user-agent", ""),
+        }
 
-    entity = {
-        "PartitionKey": "gateway",
-        "RowKey": str(uuid.uuid4()),
-        "name": name,
-        "email": email,
-        "visited_at": datetime.utcnow().isoformat(),
-        "user_agent": user_agent
-    }
+        table.create_entity(entity)
 
-    table.create_entity(entity)
+        return {"status": "logged"}
+
+    except Exception as e:
+        logger.warning(f"Visitor logging failed: {e}")
+        return {"status": "skipped"}

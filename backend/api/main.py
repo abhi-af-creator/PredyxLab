@@ -7,7 +7,7 @@ from pydantic import BaseModel, EmailStr
 import os
 import uuid
 from datetime import datetime
-from azure.data.tables import TableServiceClient
+#from azure.data.tables import TableServiceClient
 
 
 # -------------------- APP --------------------

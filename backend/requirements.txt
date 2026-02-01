@@ -6,6 +6,7 @@ scikit-learn
 yfinance
 python-dateutil
 azure-data-tables
+email-validator
 
 
 

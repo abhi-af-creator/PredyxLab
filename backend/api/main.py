@@ -180,40 +180,6 @@ def predict(symbol: str, horizon: str = "7d"):
         }
 
 
-# -------------------- VISITOR LOGGING --------------------
-
-@app.post("/visitor-log")
-async def visitor_log(payload: VisitorPayload, request: Request):
-    try:
-        conn_str = os.getenv("storageconnectionstring")
-        logger.warning(f"ENV CHECK storageconnectionstring = {bool(conn_str)}")
-
-        if not conn_str:
-            logger.warning("Storage connection string not configured")
-            return {"status": "skipped"}
-
-        service = TableServiceClient.from_connection_string(conn_str)
-        table = service.get_table_client("VisitorLogs")
-
-        entity = {
-            "PartitionKey": "gateway",
-            "RowKey": str(uuid.uuid4()),
-            "name": payload.name,
-            "email": payload.email,
-            "visited_at": datetime.utcnow().isoformat(),
-            "user_agent": request.headers.get("user-agent", ""),
-        }
-
-        table.create_entity(entity)
-
-        return {"status": "logged"}
-
-    except Exception as e:
-        # FAIL SILENTLY — do NOT break user flow
-        logger.warning(f"Visitor logging failed: {e}")
-        return {"status": "skipped"}
-
-
 
 # -------------------- HEALTH --------------------
 @app.get("/health")

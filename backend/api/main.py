@@ -1,4 +1,6 @@
+from typing import Optional
 from unittest import result
+#from xxlimited import Str
 from fastapi import FastAPI, Query, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 import pandas as pd
@@ -73,8 +75,8 @@ def flatten_yfinance_df(df: pd.DataFrame) -> pd.DataFrame:
 
 class VisitorPayload(BaseModel):
     name: str
-    email: EmailStr
-
+    email: str
+    interest: Optional[str] = None
 # -------------------- HISTORICAL --------------------
 @app.get("/historical")
 def get_historical(
@@ -183,7 +185,7 @@ def predict(symbol: str, horizon: str = "7d"):
 @app.post("/visitor-log")
 async def visitor_log(payload: VisitorPayload, request: Request):
     try:
-        conn_str = os.getenv("storage-connection-string")
+        conn_str = os.getenv("storageconnectionstring")
         if not conn_str:
             logger.warning("Storage connection string not configured")
             return {"status": "skipped"}

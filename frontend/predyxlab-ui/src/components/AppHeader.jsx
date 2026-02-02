@@ -1,27 +1,45 @@
 import React from "react";
+import "./AppHeader.css";
 
-const LANDING_URL = process.env.REACT_APP_LANDING_URL;
+/**
+ * AppHeader
+ * ----------
+ * Top header for PredyxLab React App
+ * Includes:
+ *  - App title
+ *  - Close / Back to Landing button
+ */
+function AppHeader() {
+  const handleClose = () => {
+    const landingUrl = process.env.REACT_APP_LANDING_URL;
 
-const handleClose = () => {
-  if (!LANDING_URL) {
-    console.error("REACT_APP_LANDING_URL not defined");
-    return;
-  }
-  window.location.href = LANDING_URL;
-};
+    if (!landingUrl) {
+      console.error("❌ REACT_APP_LANDING_URL is not defined");
+      return;
+    }
 
-const styles = {
-  header: {
-    display: "flex",
-    justifyContent: "flex-end",
-    padding: "12px 16px",
-  },
-  closeBtn: {
-    background: "transparent",
-    border: "1px solid #475569",
-    color: "#e5e7eb",
-    borderRadius: "6px",
-    padding: "6px 12px",
-    cursor: "pointer",
-  },
-};
+    // Redirect back to landing page
+    window.location.href = landingUrl;
+  };
+
+  return (
+    <header className="app-header">
+      <div className="app-header-left">
+        <h1 className="app-title">PredyxLab</h1>
+        <span className="app-subtitle">Market Research Lab</span>
+      </div>
+
+      <div className="app-header-right">
+        <button
+          className="close-button"
+          onClick={handleClose}
+          title="Back to landing page"
+        >
+          ✕ Close
+        </button>
+      </div>
+    </header>
+  );
+}
+
+export default AppHeader;

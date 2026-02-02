@@ -2,12 +2,13 @@ import { useState } from "react";
 import Controls from "./components/Controls";
 import PriceChart from "./components/PriceChart";
 import PredictionModal from "./components/PredictionModal";
+import AppHeader from "./components/AppHeader";
 import "./App.css";
 
 /* ---------------- API BASE ---------------- */
-const API_BASE =
-  process.env.REACT_APP_API_BASE ;
+const API_BASE = process.env.REACT_APP_API_BASE;
 console.log("BUILD OK: REACT_APP_API_BASE =", API_BASE);
+
 if (!API_BASE) {
   console.error("❌ REACT_APP_API_BASE is undefined at build time");
 }
@@ -31,7 +32,6 @@ const emptyChart = () => {
     loading: false
   };
 };
-
 
 export default function App() {
   const [charts, setCharts] = useState([emptyChart()]);
@@ -88,19 +88,15 @@ export default function App() {
       );
 
       const json = await res.json();
-
-      // unwrap arbitration payload
       const payload = json.prediction || json;
       const prices = payload?.path;
 
       if (!Array.isArray(prices) || prices.length === 0) {
-        console.error("Invalid prediction payload:", json);
         alert("Prediction failed. No usable data returned.");
         return;
       }
 
       setPrediction(payload);
-
     } catch (err) {
       console.error("Prediction request failed:", err);
       alert("Prediction request failed");
@@ -121,12 +117,14 @@ export default function App() {
   /* ---------------- RENDER ---------------- */
   return (
     <div className="app">
+      {/* ✅ CLOSE BUTTON HEADER */}
+      <AppHeader />
+
       <h2>PredyxLab</h2>
 
       <div className="chart-grid">
         {charts.map(chart => (
           <div key={chart.id} className="chart-card">
-            {/* Remove chart */}
             <button
               className="remove-chart"
               onClick={() => removeChart(chart.id)}
@@ -154,7 +152,6 @@ export default function App() {
           </div>
         ))}
 
-        {/* Add more charts */}
         {charts.length < 6 && (
           <div className="more-charts" onClick={addChart}>
             <div>
@@ -165,7 +162,6 @@ export default function App() {
         )}
       </div>
 
-      {/* ---------------- PREDICTION MODAL ---------------- */}
       {prediction && (
         <PredictionModal
           data={prediction}
@@ -176,4 +172,3 @@ export default function App() {
     </div>
   );
 }
-// force rebuild 02/01/2026 01:15:37

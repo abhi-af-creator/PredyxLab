@@ -1,6 +1,6 @@
 from typing import Optional
 from unittest import result
-from xxlimited import Str
+#from xxlimited import Str
 from fastapi import FastAPI, Query, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 import pandas as pd
@@ -9,7 +9,7 @@ from pydantic import BaseModel, EmailStr
 import os
 import uuid
 from datetime import datetime
-#from azure.data.tables import TableServiceClient
+from azure.data.tables import TableServiceClient
 
 
 # -------------------- APP --------------------

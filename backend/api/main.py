@@ -186,6 +186,8 @@ def predict(symbol: str, horizon: str = "7d"):
 async def visitor_log(payload: VisitorPayload, request: Request):
     try:
         conn_str = os.getenv("storageconnectionstring")
+        logger.warning(f"ENV CHECK storageconnectionstring = {bool(conn_str)}")
+
         if not conn_str:
             logger.warning("Storage connection string not configured")
             return {"status": "skipped"}

@@ -1,8 +1,8 @@
+import React from "react";
 import "./AppHeader.css";
 
 export default function AppHeader() {
-  const handleClose = () => {
-    // HARD-CODED LANDING PAGE (temporary but safe)
+  const goToLanding = () => {
     window.location.href =
       "https://calm-meadow-06bb15200.2.azurestaticapps.net";
   };
@@ -12,9 +12,10 @@ export default function AppHeader() {
       <h1 className="app-title">PredyxLab</h1>
 
       <button
-        className="close-btn"
-        onClick={handleClose}
+        className="app-close-btn"
+        onClick={goToLanding}
         title="Back to Landing Page"
+        aria-label="Close and return to landing page"
       >
         ✕
       </button>

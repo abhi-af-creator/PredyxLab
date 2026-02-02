@@ -2,19 +2,13 @@ import React from "react";
 
 const LANDING_URL = process.env.REACT_APP_LANDING_URL;
 
-export default function AppHeader() {
-  const handleClose = () => {
-    window.location.href = LANDING_URL;
-  };
-
-  return (
-    <div style={styles.header}>
-      <button onClick={handleClose} style={styles.closeBtn}>
-        ✕ Close
-      </button>
-    </div>
-  );
-}
+const handleClose = () => {
+  if (!LANDING_URL) {
+    console.error("REACT_APP_LANDING_URL not defined");
+    return;
+  }
+  window.location.href = LANDING_URL;
+};
 
 const styles = {
   header: {

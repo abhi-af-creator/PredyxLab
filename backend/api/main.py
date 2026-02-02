@@ -10,11 +10,13 @@ import os
 import uuid
 from datetime import datetime
 from azure.data.tables import TableServiceClient
+from backend.services.visitor_logger import router as visitor_router
+
 
 
 # -------------------- APP --------------------
 app = FastAPI(title="PredyxLab API", version="1.0")
-
+app.include_router(visitor_router)
 # -------------------- LOGGING --------------------
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("predyxlab")

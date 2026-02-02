@@ -1,35 +1,39 @@
-@app.post("/visitor-log")
+from fastapi import APIRouter, Request
+from pydantic import BaseModel
+from typing import Optional
+import os, uuid
+from datetime import datetime
+from azure.data.tables import TableServiceClient
+
+router = APIRouter()
+
+class VisitorPayload(BaseModel):
+    name: str
+    email: str
+    interest: Optional[str] = "launch_app"
+
+@router.post("/visitor-log")
 async def visitor_log(payload: VisitorPayload, request: Request):
     try:
-        conn_str = os.getenv("STORAGE_CONNECTION_STRING")
-        logger.warning(f"ENV CHECK STORAGE_CONNECTION_STRING = {bool(conn_str)}")
-
+        conn_str = os.getenv("storageconnectionstring")
         if not conn_str:
-            logger.warning("Storage connection string not configured")
             return {"status": "skipped"}
-
-        # Lazy import (keeps startup clean)
-        from azure.data.tables import TableServiceClient
 
         service = TableServiceClient.from_connection_string(conn_str)
         table = service.get_table_client("VisitorLogs")
 
-        source = payload.interest or "launch_app"
-
         entity = {
-            "PartitionKey": source,          # ✅ DISTINGUISHES SOURCE
+            "PartitionKey": payload.interest,  # ✅ THIS IS THE FIX
             "RowKey": str(uuid.uuid4()),
             "name": payload.name,
             "email": payload.email,
-            "interest": source,
+            "interest": payload.interest,
             "visited_at": datetime.utcnow().isoformat(),
-            "user_agent": request.headers.get("user-agent", ""),
+            "user_agent": request.headers.get("user-agent", "")
         }
 
         table.create_entity(entity)
-
         return {"status": "logged"}
 
     except Exception as e:
-        logger.warning(f"Visitor logging failed: {e}")
-        return {"status": "skipped"}
+        return {"status": "skipped", "reason": str(e)}

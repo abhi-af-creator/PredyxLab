@@ -30,3 +30,14 @@
 .close-button:hover {
   background: rgba(255, 255, 255, 0.1);
 }
+/* --- Header Title with Logo --- */
+.app-header-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.app-header-logo {
+  height: 32px;
+  width: auto;
+}

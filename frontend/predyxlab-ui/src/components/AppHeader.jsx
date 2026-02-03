@@ -9,7 +9,15 @@ export default function AppHeader() {
 
   return (
     <header className="app-header">
-      <h1 className="app-title">PredyxLab</h1>
+      {/* ✅ LOGO + TITLE */}
+      <div className="app-header-title">
+        <img
+          src="/Predyxlab-logo.png"
+          alt="PredyxLab logo"
+          className="app-header-logo"
+        />
+        <h1 className="app-title">PredyxLab</h1>
+      </div>
 
       <button
         className="app-close-btn"

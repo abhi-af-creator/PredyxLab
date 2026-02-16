@@ -58,6 +58,25 @@ def select_best_model(df, horizon: str = "7d"):
     # -----------------------------
     ensemble_prediction = predict_ensemble(candidates, horizon)
 
+    def determine_signal(candidates, ensemble_return, confidence):
+
+        returns = [v["expected_return_pct"] for v in candidates.values()]
+
+        positive = sum(r > 0 for r in returns)
+        negative = sum(r < 0 for r in returns)
+        total = len(returns)
+
+        # Low confidence = neutral
+        if confidence < 0.35:
+            return "neutral", f"{positive}/{total} bullish"
+
+        if positive > negative:
+            return "bullish", f"{positive}/{total} bullish"
+        elif negative > positive:
+            return "bearish", f"{negative}/{total} bearish"
+        else:
+            return "neutral", f"{positive}/{total} mixed"
+
     # -----------------------------
     # Confidence
     # -----------------------------
@@ -66,15 +85,27 @@ def select_best_model(df, horizon: str = "7d"):
     # -----------------------------
     # Best Model Selection
     # -----------------------------
+        # -----------------------------
+    # Best Model Selection (for transparency)
+    # -----------------------------
     best_key = max(
         candidates,
         key=lambda k: candidates[k]["expected_return_pct"]
     )
 
+    signal, alignment = determine_signal(
+        candidates,
+        ensemble_prediction["expected_return_pct"],
+        confidence_score
+    )
+
     return {
-        "selected_model": candidates[best_key]["model"],
-        "prediction": candidates[best_key],
-        "ensemble": ensemble_prediction,
+        "selected_model": candidates[best_key]["model"],  # keep compatibility
+        "prediction": ensemble_prediction,               # REQUIRED by main.py
+        "signal": signal,
         "confidence": confidence_score,
+        "model_alignment": alignment,
+        "ensemble": ensemble_prediction,
         "candidates": candidates
     }
+

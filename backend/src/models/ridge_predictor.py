@@ -1,7 +1,7 @@
-import numpy as np
 import pandas as pd
 from sklearn.linear_model import Ridge
 from backend.src.features.feature_builder import build_features
+
 
 FEATURE_COLS = [
     "ret_1",
@@ -12,43 +12,51 @@ FEATURE_COLS = [
     "momentum_5"
 ]
 
-def predict_ridge(df: pd.DataFrame, alpha: float = 1.0):
-    """
-    7-day price prediction using Ridge Regression
-    """
+
+def predict_ridge(df: pd.DataFrame, horizon: str = "7d", alpha: float = 1.0):
 
     if df is None or df.empty:
-        raise ValueError("Empty dataframe passed to ridge predictor")
+        raise ValueError("Empty dataframe passed to ridge")
 
     df_feat = build_features(df)
 
-    if len(df_feat) < 300:
-        raise ValueError("Not enough data for ridge prediction")
+    target_col = f"target_{horizon}"
 
-    # Training window (2 years)
-    df_train = df_feat.iloc[-504:]
+    if target_col not in df_feat.columns:
+        raise ValueError(f"Missing target column: {target_col}")
 
-    X = df_train[FEATURE_COLS].values
-    y = df_train["target_7d"].values
+    train = df_feat.iloc[-504:].copy()
+    train = train.dropna(subset=FEATURE_COLS + [target_col])
+
+    if len(train) < 30:
+        raise ValueError("Not enough data for ridge")
+
+    X = train[FEATURE_COLS].values
+    y = train[target_col].values
 
     model = Ridge(alpha=alpha)
     model.fit(X, y)
 
-    X_latest = df_feat[FEATURE_COLS].iloc[-1].values.reshape(1, -1)
+    latest_row = df_feat.iloc[-1]
 
+    if latest_row[FEATURE_COLS].isnull().any():
+        raise ValueError("Latest row contains NaN values")
+
+    X_latest = latest_row[FEATURE_COLS].values.reshape(1, -1)
     pred_return = float(model.predict(X_latest)[0])
-    last_close = float(df_feat["Close"].iloc[-1])
 
+    last_close = float(df["Close"].iloc[-1].item())
     expected_price = last_close * (1 + pred_return)
 
-    # Smooth 7-day path
-    path = []
-    for i in range(1, 8):
-        step_price = last_close * (1 + pred_return * (i / 7))
-        path.append(round(float(step_price), 2))
+    h = int(horizon.replace("d", ""))
+
+    path = [
+        round(last_close * (1 + pred_return * (i / h)), 2)
+        for i in range(1, h + 1)
+    ]
 
     return {
-        "horizon": "7d",
+        "horizon": horizon,
         "model": "ridge_regression",
         "last_close": round(last_close, 2),
         "expected_price": round(expected_price, 2),

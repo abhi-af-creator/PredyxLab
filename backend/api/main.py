@@ -11,6 +11,13 @@ import uuid
 from datetime import datetime
 from azure.data.tables import TableServiceClient
 from backend.services.visitor_logger import router as visitor_router
+import time
+
+# -------------------- SIMPLE CACHE --------------------
+PREDICTION_CACHE = {}
+CACHE_TTL_SECONDS = 300  # 5 minutes
+
+
 
 
 
@@ -38,6 +45,8 @@ def validate_startup():
         from backend.src.models import linear_predictor
         from backend.src.models import baseline_predictor
         from backend.src.models import momentum_predictor
+        from backend.src.models import ridge_predictor
+        from backend.src.models import xgboost_model
         from backend.src.arbitration import model_selector
         logger.info("STARTUP CHECK PASSED: All core modules loaded")
     except Exception:
@@ -154,7 +163,26 @@ def predict(symbol: str, horizon: str = "7d"):
         if df is None or df.empty:
             raise ValueError("No historical data available")
 
+        cache_key = f"{yf_symbol}_{horizon}"
+        current_time = time.time()
+
+        # Check cache
+        if cache_key in PREDICTION_CACHE:
+            cached_entry = PREDICTION_CACHE[cache_key]
+            if current_time - cached_entry["timestamp"] < CACHE_TTL_SECONDS:
+                logger.info("Returning cached prediction")
+                return cached_entry["data"]
+
+        # If not cached or expired, compute fresh
         result = select_best_model(df, horizon=horizon)
+
+        # Store in cache
+        PREDICTION_CACHE[cache_key] = {
+            "timestamp": current_time,
+            "data": result
+        }
+
+
         last_date = df["Date"].iloc[-1].strftime("%Y-%m-%d")
 
         if "prediction" in result:

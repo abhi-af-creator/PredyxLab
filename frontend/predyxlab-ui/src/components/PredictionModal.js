@@ -32,7 +32,6 @@ export default function PredictionModal({ data, symbol, onClose }) {
   const prices = data.predicted_prices || data.path || [];
   if (!Array.isArray(prices) || prices.length === 0) return null;
 
-  // ❌ NO fallback to today — backend MUST provide this
   if (!data.last_date) {
     console.error("Missing last_date from backend");
     return null;
@@ -42,6 +41,12 @@ export default function PredictionModal({ data, symbol, onClose }) {
     data.last_date,
     prices.length
   );
+
+  // Safe formatting
+  const confidencePct =
+    typeof data.confidence === "number"
+      ? (data.confidence * 100).toFixed(1)
+      : null;
 
   return (
     <div className="prediction-overlay">
@@ -58,6 +63,40 @@ export default function PredictionModal({ data, symbol, onClose }) {
           <p><b>Last Close:</b> {data.last_close}</p>
           <p><b>Expected Price:</b> {data.expected_price}</p>
           <p><b>Expected Return (%):</b> {data.expected_return_pct}</p>
+
+          {/* ---------------- NEW FIELDS ---------------- */}
+
+          {data.signal && (
+            <p>
+              <b>Signal:</b>{" "}
+              <span
+                style={{
+                  color:
+                    data.signal === "bullish"
+                      ? "green"
+                      : data.signal === "bearish"
+                      ? "red"
+                      : "gray"
+                }}
+              >
+                {data.signal.toUpperCase()}
+              </span>
+            </p>
+          )}
+
+          {confidencePct && (
+            <p>
+              <b>Confidence:</b> {confidencePct}%
+            </p>
+          )}
+
+          {data.alignment && (
+            <p>
+              <b>Model Alignment:</b> {data.alignment}
+            </p>
+          )}
+
+          {/* ---------------- TABLE ---------------- */}
 
           <table>
             <thead>

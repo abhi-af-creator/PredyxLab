@@ -88,15 +88,30 @@ export default function App() {
       );
 
       const json = await res.json();
-      const payload = json.prediction || json;
-      const prices = payload?.path;
+
+      // -------------------------------
+      // Keep original behavior intact
+      // -------------------------------
+      const basePrediction = json.prediction || json;
+      const prices = basePrediction?.path;
 
       if (!Array.isArray(prices) || prices.length === 0) {
         alert("Prediction failed. No usable data returned.");
         return;
       }
 
-      setPrediction(payload);
+      // -------------------------------
+      // Safely merge additional fields
+      // -------------------------------
+      const enhancedPrediction = {
+        ...basePrediction,
+        confidence: json.confidence ?? null,
+        signal: json.signal ?? null,
+        alignment: json.model_alignment ?? null
+      };
+
+      setPrediction(enhancedPrediction);
+
     } catch (err) {
       console.error("Prediction request failed:", err);
       alert("Prediction request failed");
@@ -117,7 +132,6 @@ export default function App() {
   /* ---------------- RENDER ---------------- */
   return (
     <div className="app">
-      {/* ✅ CLOSE BUTTON HEADER */}
       <AppHeader />
 
       <h2>PredyxLab</h2>

@@ -133,7 +133,7 @@ export default function App() {
   };
 
   /* ---------------- CHART OPS ---------------- */
-  const addChart = () => {
+/*  const addChart = () => {
     if (charts.length >= 6) return;
     setCharts(cs => [...cs, emptyChart()]);
   };
@@ -142,7 +142,7 @@ export default function App() {
     if (charts.length === 1) return;
     setCharts(cs => cs.filter(c => c.id !== id));
   };
-
+*/
   /* ---------------- RENDER ---------------- */
   return (
     <div className="app">

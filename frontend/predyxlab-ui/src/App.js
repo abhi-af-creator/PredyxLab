@@ -7,11 +7,6 @@ import "./App.css";
 
 /* ---------------- API BASE ---------------- */
 const API_BASE = process.env.REACT_APP_API_BASE;
-console.log("BUILD OK: REACT_APP_API_BASE =", API_BASE);
-
-if (!API_BASE) {
-  console.error("❌ REACT_APP_API_BASE is undefined at build time");
-}
 
 const todayISO = () =>
   new Date().toISOString().split("T")[0];
@@ -69,15 +64,10 @@ export default function App() {
       );
     } catch (err) {
       console.error("Fetch error:", err);
-      setCharts(cs =>
-        cs.map(c =>
-          c.id === id ? { ...c, data: [], loading: false } : c
-        )
-      );
     }
   };
 
-  /* ---------------- PREDICT ---------------- */
+  /* ---------------- BASIC PREDICT ---------------- */
   const predict = async symbol => {
     setPrediction(null);
     setPredSymbol(symbol);
@@ -89,20 +79,14 @@ export default function App() {
 
       const json = await res.json();
 
-      // -------------------------------
-      // Keep original behavior intact
-      // -------------------------------
       const basePrediction = json.prediction || json;
       const prices = basePrediction?.path;
 
       if (!Array.isArray(prices) || prices.length === 0) {
-        alert("Prediction failed. No usable data returned.");
+        alert("Prediction failed.");
         return;
       }
 
-      // -------------------------------
-      // Safely merge additional fields
-      // -------------------------------
       const enhancedPrediction = {
         ...basePrediction,
         confidence: json.confidence ?? null,
@@ -115,6 +99,36 @@ export default function App() {
     } catch (err) {
       console.error("Prediction request failed:", err);
       alert("Prediction request failed");
+    }
+  };
+
+  /* ---------------- ADVANCED PREDICT ---------------- */
+  const predictAdvanced = async symbol => {
+    setPrediction(null);
+    setPredSymbol(symbol);
+
+    try {
+      const res = await fetch(
+        `${API_BASE}/predict-advanced?symbol=${symbol}&horizon=7d`
+      );
+
+      const json = await res.json();
+
+      if (!json.forecast || json.forecast.length === 0) {
+        alert("Advanced forecast failed.");
+        return;
+      }
+
+      setPrediction({
+        model: json.selected_model,
+        advanced: true,
+        forecast: json.forecast,
+        scores: json.scores
+      });
+
+    } catch (err) {
+      console.error("Advanced prediction failed:", err);
+      alert("Advanced prediction failed");
     }
   };
 
@@ -133,31 +147,19 @@ export default function App() {
   return (
     <div className="app">
       <AppHeader />
-
       <h2>PredyxLab</h2>
 
       <div className="chart-grid">
         {charts.map(chart => (
           <div key={chart.id} className="chart-card">
-            <button
-              className="remove-chart"
-              onClick={() => removeChart(chart.id)}
-              title="Remove chart"
-            >
-              ✕
-            </button>
 
             <Controls
               initial={chart}
               onFetch={params => fetchData(chart.id, params)}
               onPredict={() => predict(chart.symbol)}
+              onAdvancedPredict={() => predictAdvanced(chart.symbol)}   // NEW
               canPredict={chart.data.length > 0}
             />
-
-            {chart.loading && <p className="status">Loading…</p>}
-            {!chart.loading && chart.data.length === 0 && (
-              <p className="status">No data loaded</p>
-            )}
 
             <PriceChart
               data={chart.data}
@@ -165,15 +167,6 @@ export default function App() {
             />
           </div>
         ))}
-
-        {charts.length < 6 && (
-          <div className="more-charts" onClick={addChart}>
-            <div>
-              <span>＋</span>
-              <p>More Charts</p>
-            </div>
-          </div>
-        )}
       </div>
 
       {prediction && (

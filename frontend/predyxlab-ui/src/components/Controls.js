@@ -6,6 +6,7 @@ export default function Controls({
   initial,
   onFetch,
   onPredict,
+  onAdvancedPredict,
   canPredict
 }) {
   const [symbol, setSymbol] = useState(initial.symbol);
@@ -79,6 +80,15 @@ export default function Controls({
           onClick={onPredict}
         >
           Predict
+        </button>
+        <button
+          className={`btn advanced ${canPredict ? "enabled" : ""}`}
+          disabled={!canPredict}
+          onClick={() => {
+            onAdvancedPredict({ symbol, priceType })
+          }}
+        >
+          Advanced AI Forecast
         </button>
       </div>
     </div>

@@ -269,3 +269,16 @@ h2 {
   min-height: 180px;
 }
 
+.row.actions {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+}
+
+.row.actions .fetch {
+  flex: 2;   /* 50% */
+}
+
+.row.actions .predict {
+  flex: 1;   /* 25% each */
+}

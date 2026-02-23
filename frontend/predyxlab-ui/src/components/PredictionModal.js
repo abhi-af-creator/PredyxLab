@@ -7,7 +7,7 @@ const nextBusinessDay = (dateStr) => {
   const d = new Date(dateStr);
   do {
     d.setDate(d.getDate() + 1);
-  } while (d.getDay() === 0 || d.getDay() === 6); // Sun/Sat
+  } while (d.getDay() === 0 || d.getDay() === 6); // Skip Sun/Sat
   return d;
 };
 
@@ -29,23 +29,39 @@ const generateTradingDates = (lastTradingDate, count) => {
 export default function PredictionModal({ data, symbol, onClose }) {
   if (!data) return null;
 
-  const prices = data.predicted_prices || data.path || [];
-  if (!Array.isArray(prices) || prices.length === 0) return null;
+  let prices = [];
+  let dates = [];
 
-  if (!data.last_date) {
-    console.error("Missing last_date from backend");
-    return null;
+  // -----------------------------
+  // ADVANCED AI FORMAT
+  // -----------------------------
+  if (Array.isArray(data.forecast)) {
+    prices = data.forecast.map(item => item.predicted_close);
+    dates = data.forecast.map(item => item.date);
   }
 
-  const dates = generateTradingDates(
-    data.last_date,
-    prices.length
-  );
+  // -----------------------------
+  // BASIC PREDICT FORMAT
+  // -----------------------------
+  else if (Array.isArray(data.predicted_prices || data.path)) {
+    prices = data.predicted_prices || data.path;
 
-  // Safe formatting
+    if (data.last_date) {
+      dates = generateTradingDates(
+        data.last_date,
+        prices.length
+      );
+    }
+  }
+
+  if (!Array.isArray(prices) || prices.length === 0) return null;
+
+  // -----------------------------
+  // Confidence Handling
+  // -----------------------------
   const confidencePct =
     typeof data.confidence === "number"
-      ? (data.confidence * 100).toFixed(1)
+      ? data.confidence.toFixed(1)
       : null;
 
   return (
@@ -53,19 +69,34 @@ export default function PredictionModal({ data, symbol, onClose }) {
       <div className="prediction-modal">
         <div className="prediction-header">
           <h3>
-            Prediction ({data.horizon}) – {symbol}
+            Prediction – {symbol}
           </h3>
           <button className="close-btn" onClick={onClose}>✕</button>
         </div>
 
         <div className="prediction-body">
-          <p><b>Model:</b> {data.model}</p>
-          <p><b>Last Close:</b> {data.last_close}</p>
-          <p><b>Expected Price:</b> {data.expected_price}</p>
-          <p><b>Expected Return (%):</b> {data.expected_return_pct}</p>
 
-          {/* ---------------- NEW FIELDS ---------------- */}
+          {/* Model */}
+          {(data.model || data.selected_model) && (
+            <p>
+              <b>Model:</b> {data.model || data.selected_model}
+            </p>
+          )}
 
+          {/* Existing fields (only show if available) */}
+          {data.last_close && (
+            <p><b>Last Close:</b> {data.last_close}</p>
+          )}
+
+          {data.expected_price && (
+            <p><b>Expected Price:</b> {data.expected_price}</p>
+          )}
+
+          {data.expected_return_pct && (
+            <p><b>Expected Return (%):</b> {data.expected_return_pct}</p>
+          )}
+
+          {/* Signal */}
           {data.signal && (
             <p>
               <b>Signal:</b>{" "}
@@ -84,6 +115,7 @@ export default function PredictionModal({ data, symbol, onClose }) {
             </p>
           )}
 
+          {/* Confidence */}
           {confidencePct && (
             <p>
               <b>Confidence:</b> {confidencePct}%
@@ -96,8 +128,7 @@ export default function PredictionModal({ data, symbol, onClose }) {
             </p>
           )}
 
-          {/* ---------------- TABLE ---------------- */}
-
+          {/* Prediction Table */}
           <table>
             <thead>
               <tr>
@@ -108,12 +139,13 @@ export default function PredictionModal({ data, symbol, onClose }) {
             <tbody>
               {prices.map((p, i) => (
                 <tr key={i}>
-                  <td>{dates[i]}</td>
+                  <td>{dates[i] || "-"}</td>
                   <td>{p}</td>
                 </tr>
               ))}
             </tbody>
           </table>
+
         </div>
       </div>
     </div>

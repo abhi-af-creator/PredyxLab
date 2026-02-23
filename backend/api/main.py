@@ -209,6 +209,49 @@ def predict(symbol: str, horizon: str = "7d"):
             "reason": str(e),
         }
 
+@app.get("/predict-advanced")
+def predict_advanced(symbol: str, horizon: str = "7d"):
+    try:
+        from backend.src.data_fetch import fetch_historical_data
+        from backend.src.arbitration.advanced_model_selector import select_best_advanced_model
+
+        yf_symbol = normalize_symbol(symbol)
+        days = int(horizon.replace("d", ""))
+
+        df = fetch_historical_data(yf_symbol)
+
+        if df is None or df.empty:
+            raise ValueError("No historical data available")
+
+        result = select_best_advanced_model(df, horizon=days)
+
+        last_date = df["Date"].iloc[-1]
+
+        future_dates = pd.bdate_range(
+            start=last_date + pd.Timedelta(days=1),
+            periods=days
+        )
+
+        return {
+            "selected_model": result["selected_model"],
+           # "scores": result["scores"],
+            "confidence": result["confidence"],
+            "forecast": [
+                {
+                    "date": d.strftime("%Y-%m-%d"),
+                    "predicted_close": v
+                }
+                for d, v in zip(future_dates, result["prediction"])
+            ]
+        }
+
+    except Exception as e:
+        logger.exception("Advanced prediction failed")
+        return {
+            "selected_model": "error",
+            "forecast": [],
+            "reason": str(e),
+        }
 
 
 # -------------------- HEALTH --------------------

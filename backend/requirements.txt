@@ -8,4 +8,10 @@ python-dateutil
 azure-data-tables
 email-validator
 
+statsmodels
+xgboost
+prophet
+tensorflow
+scikit-learn
+
 

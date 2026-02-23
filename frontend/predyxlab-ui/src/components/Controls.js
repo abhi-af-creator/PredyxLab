@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { NSE_SYMBOLS } from "../constants/symbols";
+
 const todayISO = () =>
   new Date().toISOString().split("T")[0];
+
 export default function Controls({
   initial,
   onFetch,
@@ -16,6 +18,7 @@ export default function Controls({
 
   return (
     <div className="controls">
+      
       {/* SYMBOL + PRICE TYPE */}
       <div className="row">
         <input
@@ -59,8 +62,10 @@ export default function Controls({
         />
       </div>
 
-      {/* ACTIONS */}
+      {/* ACTION BUTTONS */}
       <div className="row actions">
+        
+        {/* FETCH - 50% */}
         <button
           className="btn fetch"
           onClick={() => {
@@ -74,22 +79,24 @@ export default function Controls({
           Fetch
         </button>
 
+        {/* PREDICT - 25% */}
         <button
           className={`btn predict ${canPredict ? "enabled" : ""}`}
           disabled={!canPredict}
-          onClick={onPredict}
+          onClick={() => onPredict(symbol)}
         >
           Predict
         </button>
+
+        {/* ADVANCED AI - 25% */}
         <button
-          className={`btn advanced ${canPredict ? "enabled" : ""}`}
+          className={`btn predict ${canPredict ? "enabled" : ""}`}
           disabled={!canPredict}
-          onClick={() => {
-            onAdvancedPredict({ symbol, priceType })
-          }}
+          onClick={() => onAdvancedPredict(symbol)}
         >
           Advanced AI Forecast
         </button>
+
       </div>
     </div>
   );

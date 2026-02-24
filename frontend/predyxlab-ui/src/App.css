@@ -274,11 +274,60 @@ h2 {
   gap: 10px;
   width: 100%;
 }
+.row.actions button {
+  height: 50px;                 /* Fixed uniform height */
+  font-size: 15px;
+  font-weight: 600;
+  border-radius: 10px;
+  /*white-space: nowrap;          /* Prevent wrapping */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
 
 .row.actions .fetch {
-  flex: 2;   /* 50% */
+  flex: 1;   /* 33% */
 }
 
 .row.actions .predict {
   flex: 1;   /* 25% each */
+}
+.row.actions .advanced {
+  flex: 1;
+}
+
+.chart-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+
+.chart-card {
+  position: relative;
+  background: white;
+  padding: 15px;
+  border-radius: 12px;
+}
+
+.remove-chart {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: #ff4d4d;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 25px;
+  height: 25px;
+  cursor: pointer;
+}
+
+.more-charts {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border: 2px dashed #ccc;
+  border-radius: 12px;
+  cursor: pointer;
+  min-height: 200px;
 }

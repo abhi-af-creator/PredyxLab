@@ -1,134 +1,137 @@
+import { useState } from "react";
 import "./PredictionModal.css";
 
-/**
- * Get next business day after given date
- */
-const nextBusinessDay = (dateStr) => {
-  const d = new Date(dateStr);
-  do {
-    d.setDate(d.getDate() + 1);
-  } while (d.getDay() === 0 || d.getDay() === 6); // Skip Sun/Sat
-  return d;
-};
-
-/**
- * Generate future trading dates (Mon–Fri only)
- */
-const generateTradingDates = (lastTradingDate, count) => {
+/* ---------- Generate Next Business Days ---------- */
+const generateBusinessDates = (startDate, count) => {
   const dates = [];
-  let d = nextBusinessDay(lastTradingDate);
+  let d = new Date(startDate);
 
   while (dates.length < count) {
-    dates.push(d.toISOString().slice(0, 10));
-    d = nextBusinessDay(d.toISOString());
+    d.setDate(d.getDate() + 1);
+    const day = d.getDay();
+
+    if (day !== 0 && day !== 6) {
+      dates.push(d.toISOString().slice(0, 10));
+    }
   }
 
   return dates;
 };
 
-export default function PredictionModal({ data, symbol, onClose }) {
+export default function PredictionModal({
+  data,
+  symbol,
+  onClose,
+  runAdvancedForecast
+}) {
+  const [loadingAI, setLoadingAI] = useState(false);
+
   if (!data) return null;
 
-  let prices = [];
-  let dates = [];
+  const isAdvanced = data.advanced === true;
 
-  // -----------------------------
-  // ADVANCED AI FORMAT
-  // -----------------------------
-  if (Array.isArray(data.forecast)) {
-    prices = data.forecast.map(item => item.predicted_close);
-    dates = data.forecast.map(item => item.date);
-  }
+  /* ---------- NORMALIZE DATA ---------- */
 
-  // -----------------------------
-  // BASIC PREDICT FORMAT
-  // -----------------------------
-  else if (Array.isArray(data.predicted_prices || data.path)) {
-    prices = data.predicted_prices || data.path;
+  let rows = [];
 
-    if (data.last_date) {
-      dates = generateTradingDates(
-        data.last_date,
-        prices.length
-      );
+  if (isAdvanced && Array.isArray(data.forecast)) {
+    rows = data.forecast.map(item => ({
+      date: item.date,
+      predicted: item.predicted_close
+    }));
+  } else {
+    const basePrices = data.predicted_prices || data.path || [];
+
+    if (Array.isArray(basePrices) && basePrices.length > 0) {
+      let dates = [];
+
+      if (data.last_date) {
+        dates = generateBusinessDates(
+          data.last_date,
+          basePrices.length
+        );
+      } else {
+        dates = basePrices.map((_, i) => `Day ${i + 1}`);
+      }
+
+      rows = basePrices.map((price, index) => ({
+        date: dates[index],
+        predicted: price
+      }));
     }
   }
 
-  if (!Array.isArray(prices) || prices.length === 0) return null;
+  if (!rows.length) return null;
 
-  // -----------------------------
-  // Confidence Handling
-  // -----------------------------
-  const confidencePct =
-    typeof data.confidence === "number"
-      ? data.confidence.toFixed(1)
-      : null;
+  const handleAI = async () => {
+    if (!runAdvancedForecast) return;
+    setLoadingAI(true);
+    await runAdvancedForecast();
+    setLoadingAI(false);
+  };
 
   return (
     <div className="prediction-overlay">
       <div className="prediction-modal">
+
+        {/* -------- HEADER -------- */}
         <div className="prediction-header">
           <h3>
-            Prediction – {symbol}
+            {isAdvanced
+              ? `Advanced AI Forecast – ${symbol}`
+              : `Prediction – ${symbol}`}
           </h3>
           <button className="close-btn" onClick={onClose}>✕</button>
         </div>
 
         <div className="prediction-body">
 
-          {/* Model */}
-          {(data.model || data.selected_model) && (
-            <p>
-              <b>Model:</b> {data.model || data.selected_model}
-            </p>
-          )}
+          {/* -------- SUMMARY -------- */}
+          <div className="prediction-summary">
 
-          {/* Existing fields (only show if available) */}
-          {data.last_close && (
-            <p><b>Last Close:</b> {data.last_close}</p>
-          )}
+            {!isAdvanced && (
+              <>
+                <div className="summary-row split">
+                  <div><b>Model:</b> {data.model}</div>
+                  <div>
+                    <b>Confidence:</b>{" "}
+                    {(Number(data.confidence) * 100).toFixed(2)}%
+                  </div>
+                </div>
 
-          {data.expected_price && (
-            <p><b>Expected Price:</b> {data.expected_price}</p>
-          )}
+                <div className="summary-row split">
+                  <div>
+                    <b>Expected Price:</b>{" "}
+                    {Number(data.expected_price).toFixed(2)}
+                  </div>
+                  <div>
+                    <b>Expected Return (%):</b>{" "}
+                    {Number(data.expected_return_pct).toFixed(2)}
+                  </div>
+                </div>
 
-          {data.expected_return_pct && (
-            <p><b>Expected Return (%):</b> {data.expected_return_pct}</p>
-          )}
+                <div className="summary-row">
+                  <div>
+                    <b>Last Close:</b>{" "}
+                    {Number(data.last_close).toFixed(2)}
+                  </div>
+                </div>
+              </>
+            )}
 
-          {/* Signal */}
-          {data.signal && (
-            <p>
-              <b>Signal:</b>{" "}
-              <span
-                style={{
-                  color:
-                    data.signal === "bullish"
-                      ? "green"
-                      : data.signal === "bearish"
-                      ? "red"
-                      : "gray"
-                }}
-              >
-                {data.signal.toUpperCase()}
-              </span>
-            </p>
-          )}
+            {isAdvanced && (
+              <div className="summary-row split">
+                <div><b>Advanced AI Model:</b> {data.model}</div>
+                <div>
+                  <b>Confidence:</b>{" "}
+                  {Number(data.confidence).toFixed(2)}%
+                </div>
+              </div>
+            )}
 
-          {/* Confidence */}
-          {confidencePct && (
-            <p>
-              <b>Confidence:</b> {confidencePct}%
-            </p>
-          )}
+          </div>
 
-          {data.alignment && (
-            <p>
-              <b>Model Alignment:</b> {data.alignment}
-            </p>
-          )}
-
-          {/* Prediction Table */}
+          {/* -------- TABLE -------- */}
           <table>
             <thead>
               <tr>
@@ -137,14 +140,29 @@ export default function PredictionModal({ data, symbol, onClose }) {
               </tr>
             </thead>
             <tbody>
-              {prices.map((p, i) => (
+              {rows.map((row, i) => (
                 <tr key={i}>
-                  <td>{dates[i] || "-"}</td>
-                  <td>{p}</td>
+                  <td>{row.date}</td>
+                  <td>{Number(row.predicted).toFixed(2)}</td>
                 </tr>
               ))}
             </tbody>
           </table>
+
+          {/* -------- AI BUTTON (ONLY FOR NORMAL MODE) -------- */}
+          {!isAdvanced && (
+            <div className="ai-button-wrapper">
+              <button
+                className="advanced-upgrade"
+                onClick={handleAI}
+                disabled={loadingAI}
+              >
+                {loadingAI
+                  ? "Running Advanced AI Forecast..."
+                  : "Run Advanced AI Forecast"}
+              </button>
+            </div>
+          )}
 
         </div>
       </div>

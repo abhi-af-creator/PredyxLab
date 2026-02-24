@@ -11,7 +11,7 @@ const API_BASE = process.env.REACT_APP_API_BASE;
 const todayISO = () =>
   new Date().toISOString().split("T")[0];
 
-const MIN_DATE = "2011-01-01";
+const MIN_DATE = "2026-01-01";
 
 /* ---------------- EMPTY CHART ---------------- */
 const emptyChart = () => {
@@ -32,6 +32,18 @@ export default function App() {
   const [charts, setCharts] = useState([emptyChart()]);
   const [prediction, setPrediction] = useState(null);
   const [predSymbol, setPredSymbol] = useState(null);
+  const [aiLoading, setAiLoading] = useState(false);
+
+  /* ---------------- CHART OPERATIONS ---------------- */
+  const addChart = () => {
+    if (charts.length >= 6) return;
+    setCharts(prev => [...prev, emptyChart()]);
+  };
+
+  const removeChart = (id) => {
+    if (charts.length === 1) return;
+    setCharts(prev => prev.filter(c => c.id !== id));
+  };
 
   /* ---------------- FETCH HISTORICAL ---------------- */
   const fetchData = async (id, params) => {
@@ -64,48 +76,55 @@ export default function App() {
       );
     } catch (err) {
       console.error("Fetch error:", err);
+      setCharts(cs =>
+        cs.map(c =>
+          c.id === id ? { ...c, loading: false } : c
+        )
+      );
     }
   };
 
   /* ---------------- BASIC PREDICT ---------------- */
   const predict = async symbol => {
-    setPrediction(null);
-    setPredSymbol(symbol);
+  setPrediction(null);
+  setPredSymbol(symbol);
 
-    try {
-      const res = await fetch(
-        `${API_BASE}/predict?symbol=${symbol}&horizon=7d`
-      );
+  try {
+    const res = await fetch(
+      `${API_BASE}/predict?symbol=${symbol}&horizon=7d`
+    );
 
-      const json = await res.json();
+    const json = await res.json();
 
-      const basePrediction = json.prediction || json;
-      const prices = basePrediction?.path;
+    const basePrediction = json.prediction || json;
 
-      if (!Array.isArray(prices) || prices.length === 0) {
-        alert("Prediction failed.");
-        return;
-      }
+    const prices = basePrediction?.path;
 
-      const enhancedPrediction = {
-        ...basePrediction,
-        confidence: json.confidence ?? null,
-        signal: json.signal ?? null,
-        alignment: json.model_alignment ?? null
-      };
-
-      setPrediction(enhancedPrediction);
-
-    } catch (err) {
-      console.error("Prediction request failed:", err);
-      alert("Prediction request failed");
+    if (!Array.isArray(prices) || prices.length === 0) {
+      alert("Prediction failed.");
+      return;
     }
-  };
 
+    const enhancedPrediction = {
+      ...basePrediction,
+      model: json.selected_model || basePrediction.model,
+      confidence: json.confidence ?? null,
+      last_date:
+        basePrediction.last_date || json.last_date || null
+    };
+
+    setPrediction(enhancedPrediction);
+
+  } catch (err) {
+    console.error("Prediction request failed:", err);
+    alert("Prediction request failed");
+  }
+};
   /* ---------------- ADVANCED PREDICT ---------------- */
-  const predictAdvanced = async symbol => {
+  const predictAdvanced = async (symbol) => {
     setPrediction(null);
     setPredSymbol(symbol);
+    setAiLoading(true);
 
     try {
       const res = await fetch(
@@ -116,6 +135,7 @@ export default function App() {
 
       if (!json.forecast || json.forecast.length === 0) {
         alert("Advanced forecast failed.");
+        setAiLoading(false);
         return;
       }
 
@@ -123,24 +143,15 @@ export default function App() {
         model: json.selected_model,
         advanced: true,
         forecast: json.forecast,
-        scores: json.scores
+        confidence: json.confidence ?? null
       });
 
     } catch (err) {
       console.error("Advanced prediction failed:", err);
       alert("Advanced prediction failed");
     }
-  };
 
-  /* ---------------- CHART OPS ---------------- */
-  const addChart = () => {
-    if (charts.length >= 6) return;
-    setCharts(cs => [...cs, emptyChart()]);
-  };
-
-  const removeChart = id => {
-    if (charts.length === 1) return;
-    setCharts(cs => cs.filter(c => c.id !== id));
+    setAiLoading(false);
   };
 
   /* ---------------- RENDER ---------------- */
@@ -153,13 +164,23 @@ export default function App() {
         {charts.map(chart => (
           <div key={chart.id} className="chart-card">
 
+            {/* Remove Chart Button */}
+            <button
+              className="remove-chart"
+              onClick={() => removeChart(chart.id)}
+            >
+              ✕
+            </button>
+
             <Controls
               initial={chart}
               onFetch={params => fetchData(chart.id, params)}
               onPredict={() => predict(chart.symbol)}
-              onAdvancedPredict={() => predictAdvanced(chart.symbol)}   // NEW
-              canPredict={chart.data.length > 0}
+              onAdvancedPredict={() => predictAdvanced(chart.symbol)}
+              canPredict={chart.data.length > 0 && !aiLoading}
             />
+
+            {chart.loading && <p className="status">Loading...</p>}
 
             <PriceChart
               data={chart.data}
@@ -167,6 +188,16 @@ export default function App() {
             />
           </div>
         ))}
+
+        {/* Add Chart Button */}
+        {charts.length < 6 && (
+          <div className="more-charts" onClick={addChart}>
+            <div>
+              <span style={{ fontSize: "32px" }}>＋</span>
+              <p>Add Chart</p>
+            </div>
+          </div>
+        )}
       </div>
 
       {prediction && (
@@ -174,6 +205,7 @@ export default function App() {
           data={prediction}
           symbol={predSymbol}
           onClose={() => setPrediction(null)}
+          runAdvancedForecast={() => predictAdvanced(predSymbol)}
         />
       )}
     </div>

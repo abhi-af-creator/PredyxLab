@@ -8,7 +8,6 @@ export default function Controls({
   initial,
   onFetch,
   onPredict,
-  onAdvancedPredict,
   canPredict
 }) {
   const [symbol, setSymbol] = useState(initial.symbol);
@@ -49,7 +48,7 @@ export default function Controls({
         <input
           type="date"
           value={startDate}
-          min="2011-01-01"
+          min="2026-01-01"
           max={endDate}
           onChange={e => setStartDate(e.target.value)}
         />
@@ -88,14 +87,7 @@ export default function Controls({
           Predict
         </button>
 
-        {/* ADVANCED AI - 25% */}
-        <button
-          className={`btn predict ${canPredict ? "enabled" : ""}`}
-          disabled={!canPredict}
-          onClick={() => onAdvancedPredict(symbol)}
-        >
-          Advanced AI Forecast
-        </button>
+        
 
       </div>
     </div>

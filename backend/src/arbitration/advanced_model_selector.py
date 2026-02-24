@@ -4,17 +4,14 @@ import pandas as pd
 from sklearn.model_selection import TimeSeriesSplit
 from sklearn.metrics import mean_squared_error
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.preprocessing import MinMaxScaler
 from xgboost import XGBRegressor
 
 from statsmodels.tsa.arima.model import ARIMA
 from statsmodels.tsa.statespace.sarimax import SARIMAX
 from prophet import Prophet
 
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense, LSTM
-from tensorflow.keras.optimizers import Adam
 
+# ---------------- UTIL ----------------
 
 def rmse(true, pred):
     return np.sqrt(mean_squared_error(true, pred))
@@ -28,6 +25,8 @@ def create_lags(series, lags=5):
     return df_lag.dropna()
 
 
+# ---------------- MAIN SELECTOR ----------------
+
 def select_best_advanced_model(df: pd.DataFrame, horizon: int = 7):
 
     series = df["Close"]
@@ -38,7 +37,7 @@ def select_best_advanced_model(df: pd.DataFrame, horizon: int = 7):
     arima_scores = []
     for train_idx, test_idx in tscv.split(series):
         train, test = series.iloc[train_idx], series.iloc[test_idx]
-        model = ARIMA(train, order=(1,1,1)).fit()
+        model = ARIMA(train, order=(1, 1, 1)).fit()
         pred = model.forecast(len(test))
         arima_scores.append(rmse(test, pred))
     scores["ARIMA"] = np.mean(arima_scores)
@@ -47,7 +46,11 @@ def select_best_advanced_model(df: pd.DataFrame, horizon: int = 7):
     sarima_scores = []
     for train_idx, test_idx in tscv.split(series):
         train, test = series.iloc[train_idx], series.iloc[test_idx]
-        model = SARIMAX(train, order=(1,1,1), seasonal_order=(0,0,0,0)).fit(disp=False)
+        model = SARIMAX(
+            train,
+            order=(1, 1, 1),
+            seasonal_order=(0, 0, 0, 0)
+        ).fit(disp=False)
         pred = model.forecast(len(test))
         sarima_scores.append(rmse(test, pred))
     scores["SARIMA"] = np.mean(sarima_scores)
@@ -72,6 +75,7 @@ def select_best_advanced_model(df: pd.DataFrame, horizon: int = 7):
 
     # ---------------- XGBoost ----------------
     xgb_scores = []
+
     for train_idx, test_idx in tscv.split(lagged):
         train, test = lagged.iloc[train_idx], lagged.iloc[test_idx]
         X_train = train.drop("Close", axis=1)
@@ -79,7 +83,7 @@ def select_best_advanced_model(df: pd.DataFrame, horizon: int = 7):
         X_test = test.drop("Close", axis=1)
         y_test = test["Close"]
 
-        model = XGBRegressor(objective='reg:squarederror')
+        model = XGBRegressor(objective="reg:squarederror")
         model.fit(X_train, y_train)
         pred = model.predict(X_test)
         xgb_scores.append(rmse(y_test, pred))
@@ -95,7 +99,11 @@ def select_best_advanced_model(df: pd.DataFrame, horizon: int = 7):
         train, test = prophet_df.iloc[train_idx], prophet_df.iloc[test_idx]
         model = Prophet()
         model.fit(train)
-        future = model.make_future_dataframe(periods=len(test), include_history=False)
+
+        future = model.make_future_dataframe(
+            periods=len(test),
+            include_history=False
+        )
         forecast = model.predict(future)
         prophet_scores.append(rmse(test["y"], forecast["yhat"]))
 
@@ -105,51 +113,55 @@ def select_best_advanced_model(df: pd.DataFrame, horizon: int = 7):
     best_model = min(scores, key=scores.get)
     best_rmse = scores[best_model]
     worst_rmse = max(scores.values())
-    #
+
     if worst_rmse == 0:
         confidence = 100.0
     else:
         confidence = round((1 - (best_rmse / worst_rmse)) * 100, 2)
 
-
     # ---------------- Final Forecast ----------------
     forecast_values = []
 
     if best_model == "ARIMA":
-        model = ARIMA(series, order=(1,1,1)).fit()
+        model = ARIMA(series, order=(1, 1, 1)).fit()
         forecast_values = model.forecast(steps=horizon)
 
     elif best_model == "SARIMA":
-        model = SARIMAX(series, order=(1,1,1), seasonal_order=(0,0,0,0)).fit()
+        model = SARIMAX(
+            series,
+            order=(1, 1, 1),
+            seasonal_order=(0, 0, 0, 0)
+        ).fit()
         forecast_values = model.forecast(steps=horizon)
 
-    elif best_model == "RandomForest":
+    elif best_model in ["RandomForest", "XGBoost"]:
+
         lagged_full = create_lags(series)
-        X = lagged_full.drop("Close", axis=1)
-        y = lagged_full["Close"]
-        model = RandomForestRegressor()
-        model.fit(X, y)
+        X_full = lagged_full.drop("Close", axis=1)
+        y_full = lagged_full["Close"]
 
-        last_row = X.iloc[-1].values.reshape(1, -1)
+        if best_model == "RandomForest":
+            model = RandomForestRegressor()
+        else:
+            model = XGBRegressor(objective="reg:squarederror")
+
+        model.fit(X_full, y_full)
+
+        # Start with last known lag row (preserve column names!)
+        current_row = X_full.iloc[-1:].copy()
+        feature_columns = X_full.columns.tolist()
+
         for _ in range(horizon):
-            pred = model.predict(last_row)[0]
-            forecast_values.append(pred)
-            last_row = np.roll(last_row, -1)
-            last_row[0, -1] = pred
+            # Predict using proper DataFrame (NO WARNING)
+            next_pred = model.predict(current_row)[0]
+            forecast_values.append(next_pred)
 
-    elif best_model == "XGBoost":
-        lagged_full = create_lags(series)
-        X = lagged_full.drop("Close", axis=1)
-        y = lagged_full["Close"]
-        model = XGBRegressor(objective='reg:squarederror')
-        model.fit(X, y)
+            # Update lags properly
+            new_row = current_row.copy()
+            new_row.iloc[0, 1:] = current_row.iloc[0, :-1].values
+            new_row.iloc[0, 0] = next_pred
 
-        last_row = X.iloc[-1].values.reshape(1, -1)
-        for _ in range(horizon):
-            pred = model.predict(last_row)[0]
-            forecast_values.append(pred)
-            last_row = np.roll(last_row, -1)
-            last_row[0, -1] = pred
+            current_row = new_row
 
     elif best_model == "Prophet":
         model = Prophet()
@@ -163,7 +175,6 @@ def select_best_advanced_model(df: pd.DataFrame, horizon: int = 7):
 
     return {
         "selected_model": best_model,
-       # "scores": scores,
         "prediction": forecast_values.tolist(),
         "confidence": confidence
     }
